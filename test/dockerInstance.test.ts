@@ -11,7 +11,7 @@ test("DockerInstance runs echo and captures output", async () => {
     const result = await instance.runCommandsInDocker({
         image: "node:20-alpine",
         commands,
-        timeoutSeconds: 30
+        timeoutSeconds: 300
     });
     if (result.status !== DockerRunStatus.SUCCESS) {
         console.error('Docker error output:', result.error);

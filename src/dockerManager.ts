@@ -101,12 +101,7 @@ export class DockerManager {
       // Prepare Docker run options
       const options: DockerRunOptions = {
         image: this.options.dockerImage,
-        commands: [
-          // Here you would convert the task to actual commands
-          // This is a placeholder - you would need to implement the actual command generation
-          `echo "Executing task: ${task.title}"`,
-          `echo "Description: ${task.description}"`
-        ],
+        commands: [task.description],
         timeoutSeconds: this.options.maxTimeoutSeconds
       };
       
@@ -231,6 +226,13 @@ export class DockerManager {
    */
   public getTaskResult(taskId: string): TaskResult | undefined {
     return this.taskResults.get(taskId);
+  }
+
+  public async waitForAllTasks(): Promise<void> {
+    // Wait for all tasks to be completed
+    while (Array.from(this.taskResults.values()).some(r => r.status === TaskStatus.ONGOING || r.status === TaskStatus.NOT_STARTED)) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   }
   
   /**
