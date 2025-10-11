@@ -1,0 +1,78 @@
+/**
+ * Represents a task to be executed by the system
+ */
+export interface Task {
+    /**
+     * The title of the task
+     */
+    title: string;
+
+    /**
+     * Detailed description of what the task should accomplish
+     */
+    description: string;
+
+    /**
+     * Array of file paths that are related to or will be affected by this task
+     */
+    relatedFiles: string[];
+
+    /**
+     * Array of tasks that should be executed after this task is completed
+     */
+    followingTasks: Task[];
+
+    /**
+     * Priority level of the task. Higher number means higher priority
+     * @example
+     * 1 = Low priority
+     * 2 = Medium priority
+     * 3 = High priority
+     * 4 = Critical priority
+     * 5 = Immediate priority
+     */
+    priority: number;
+
+    /**
+     * The ID of the task
+     */
+    ID: string;
+}
+
+/**
+ * Status of a completed task
+ */
+export enum TaskStatus {
+    SUCCESS = 'success',
+    FAILURE = 'failure',
+    ONGOING = 'ongoing',
+    NOT_STARTED = 'not_started',
+}
+
+/**
+ * Represents the result of an executed task, including the original task properties
+ * and execution outcomes
+ */
+export interface TaskResult extends Task {
+    /**
+     * The status of the task execution
+     */
+    status: TaskStatus;
+
+    /**
+     * Detailed report of what was done, any issues encountered,
+     * and the final outcome
+     */
+    report: string;
+
+    /**
+     * Git commit hash of the changes made by this task
+     * Only available when task succeeds and results in a commit
+     */
+    commitHash?: string;
+
+    /**
+     * Unix timestamp (in milliseconds) when the task completed
+     */
+    completedAt: number;
+}
