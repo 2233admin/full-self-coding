@@ -1,66 +1,104 @@
+import { expect, test, mock } from "bun:test";
+import { DockerManager } from "../src/dockerManager";
+import { DockerRunStatus } from "../src/dockerInstance";
+import type { Task, TaskResult } from "../src/task";
+import { TaskStatus } from "../src/task";
 
-import { expect, test } from "bun:test";
-import { DockerInstance, DockerRunStatus } from "../src/dockerInstance";
+// Create a helper function to create tasks
+function createTask(id: string, title: string, description: string): Task {
+  return {
+    ID: id,
+    title,
+    description,
+    followingTasks: [],
+    createdAt: Date.now()
+  };
+}
 
-test("DockerInstance runs echo and captures output", async () => {
-    const instance = new DockerInstance();
-    const commands = [
-        "echo HelloDocker"
-    ];
-    // Use official node image for shell reliability
-    const result = await instance.runCommandsInDocker({
-        image: "node:20-alpine",
-        commands,
-        timeoutSeconds: 30
-    });
-    if (result.status !== DockerRunStatus.SUCCESS) {
-        console.error('Docker error output:', result.error);
-    }
-    expect(result.status).toBe(DockerRunStatus.SUCCESS);
-    expect(result.output).toMatch(/HelloDocker/);
+// Track Docker instances created
+let runningInstances = 0;
+let maxRunningInstances = 0;
+
+// Create a mock for DockerInstance with tracking
+const mockRunCommandsInDocker = mock(async () => {
+  // Track instance usage
+  runningInstances++;
+  maxRunningInstances = Math.max(maxRunningInstances, runningInstances);
+  
+  // Simulate a delay to mimic Docker execution
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Simulate instance being destroyed after task completion
+  runningInstances--;
+  
+  return {
+    status: DockerRunStatus.SUCCESS,
+    output: "Task executed successfully",
+    error: null
+  };
 });
 
+// Mock the entire module
+mock.module("../src/dockerInstance", () => {
+  // Create a mock DockerInstance class
+  class MockDockerInstance {
+    runCommandsInDocker = mockRunCommandsInDocker;
+  }
 
-test("DockerInstance creates and runs hello world Node.js script", async () => {
-    const instance = new DockerInstance();
-    const commands = [
-            `echo "console.log('Hello, World!')" > /tmp/hello.js`,
-        "node /tmp/hello.js"
-    ];
-    const result = await instance.runCommandsInDocker({
-        image: "node:20-alpine",
-        commands,
-        timeoutSeconds: 30
-    });
-    if (result.status !== DockerRunStatus.SUCCESS) {
-        console.error('Docker error output:', result.error);
-    }
-    expect(result.status).toBe(DockerRunStatus.SUCCESS);
-    expect(result.output).toMatch(/Hello, World!/);
+  return {
+    DockerInstance: MockDockerInstance,
+    DockerRunStatus
+  };
 });
 
-test("DockerInstance handles timeout correctly", async () => {
-    const instance = new DockerInstance();
-    const commands = [
-        "sleep 3" // Command that will take longer than the timeout
-    ];
-    const result = await instance.runCommandsInDocker({
-        image: "node:20-alpine",
-        commands,
-        timeoutSeconds: 1 // Very short timeout to trigger timeout status
-    });
-    expect(result.status).toBe(DockerRunStatus.TIMEOUT);
-});
+test("DockerManager respects capacity limit with multiple tasks", async () => {
+  // Reset counters before test
+  runningInstances = 0;
+  maxRunningInstances = 0;
+  
+  // Create 7 tasks with dependencies
+  const task1 = createTask("1", "Task 1", "First task");
+  const task2 = createTask("2", "Task 2", "Second task");
+  const task3 = createTask("3", "Task 3", "Third task");
+  const task4 = createTask("4", "Task 4", "Fourth task");
+  const task5 = createTask("5", "Task 5", "Fifth task");
+  const task6 = createTask("6", "Task 6", "Sixth task");
+  const task7 = createTask("7", "Task 7", "Seventh task");
 
-test("DockerInstance handles command failure correctly", async () => {
-    const instance = new DockerInstance();
-    const commands = [
-        "nonexistentcommand" // Command that doesn't exist
-    ];
-    const result = await instance.runCommandsInDocker({
-        image: "node:20-alpine",
-        commands,
-        timeoutSeconds: 10
-    });
-    expect(result.status).toBe(DockerRunStatus.FAILURE);
+  // Set up task dependencies
+  task1.followingTasks = [task3, task4];
+  task2.followingTasks = [task5];
+  task3.followingTasks = [task6];
+  task4.followingTasks = [task7];
+
+  // Create a list of all tasks for verification
+  const allTasks = [task1, task2, task3, task4, task5, task6, task7];
+  
+  // Initial tasks to start with
+  const initialTasks = [task1, task2];
+
+  // Create DockerManager with capacity of 3
+  const dockerManager = new DockerManager(allTasks, {
+    maxCapacity: 3,
+    dockerImage: "node:20-alpine",
+    maxTimeoutSeconds: 30
+  });
+
+  // Start the Docker manager with the initial tasks
+  await dockerManager.start();
+
+  // Wait for all tasks to complete (adjust timeout as needed)
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Verify that the maximum number of running instances never exceeded the capacity
+  expect(maxRunningInstances).toBeLessThanOrEqual(3);
+  
+  // Verify that all tasks were processed
+  const taskResults = dockerManager.getTaskResults();
+  expect(taskResults.length).toBe(7);
+  
+  // Verify that all tasks were completed successfully
+  for (const result of taskResults) {
+    expect(result.status).toBe(TaskStatus.SUCCESS);
+  }
 });
