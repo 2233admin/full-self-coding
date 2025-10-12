@@ -54,6 +54,36 @@ export interface Config {
      * @example "ubuntu:latest"
      */
     dockerImageRef?: string;
+
+    /**
+     * Max number of docker containers that can run in parallel
+     * @default 2 if not specified
+     */
+    maxParallelDockerContainers?: number;
+
+    /**
+     * Timeout in seconds for Docker container operations
+     * @default 300 if not specified
+     */
+    dockerTimeoutSeconds?: number;
+
+    /**
+     * Max number of tasks that analyzer can detect
+     * @default 10 if not specified
+     */
+    maxTasks?: number;
+
+    /**
+     * Max amount of memory (in MB) that each Docker container can use
+     * @default 512 if not specified
+     */
+    dockerMemoryMB?: number;
+
+    /**
+     * Number of CPU cores to assign to each Docker container
+     * @default 1 if not specified
+     */
+    dockerCpuCores?: number;
 }
 
 /**

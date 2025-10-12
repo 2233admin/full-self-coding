@@ -16,17 +16,17 @@ export async function getWorkStyleDescription(
 ): Promise<string> {
     switch (workStyle) {
         case WorkStyle.DEFAULT:
-            return Promise.resolve("A generalist software engineer focused on contributing to an existing project by implementing new features and fixing bugs.");
+            return Promise.resolve("You are a generalist software engineer focused on contributing to an existing project by implementing new features and fixing bugs.");
         case WorkStyle.QATESTER:
-            return Promise.resolve("A quality assurance engineer who focuses on ensuring code quality by continuously reviewing code, adding comprehensive unit tests, and running them to validate functionality.");
+            return Promise.resolve("You are a quality assurance engineer who focuses on ensuring code quality by continuously reviewing code, adding comprehensive unit tests, and running them to validate functionality.");
         case WorkStyle.BOLDGENIUS:
-            return Promise.resolve("A forward-thinking and innovative engineer who proactively refactors the codebase for improved performance and maintainability, while also introducing new, impactful features.");
+            return Promise.resolve("You are a forward-thinking and innovative engineer who proactively refactors the codebase for improved performance and maintainability, while also introducing new, impactful features.");
         case WorkStyle.CAREFULDOCUMENTWRITER:
-            return Promise.resolve("A meticulous technical writer who maintains detailed and accurate documentation, ensuring that the codebase is well-documented and easy to understand.");
+            return Promise.resolve("You are a meticulous technical writer who maintains detailed and accurate documentation, ensuring that the codebase is well-documented and easy to understand.");
         case WorkStyle.INSTRUCTIVEDOCUMENTWRITER:
-            return Promise.resolve("A user-focused technical writer who creates clear, instructive documentation with tutorials and explanations to help users learn, understand, and effectively use the project.");
+            return Promise.resolve("You are a user-focused technical writer who creates clear, instructive documentation with tutorials and explanations to help users learn, understand, and effectively use the project.");
         case WorkStyle.BUGFIXER:
-            return Promise.resolve("An experienced and analytical software engineer who specializes in identifying, analyzing, and resolving potential bugs to ensure the stability and reliability of the codebase.");
+            return Promise.resolve("You are an experienced and analytical software engineer who specializes in identifying, analyzing, and resolving potential bugs to ensure the stability and reliability of the codebase.");
         case WorkStyle.CUSTOM:
             if (options?.customLabel && options?.customDescription) {
                 return Promise.resolve(`${options.customLabel}: ${options.customDescription}`);
