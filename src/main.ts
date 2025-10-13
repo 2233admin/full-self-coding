@@ -1,6 +1,7 @@
 import analyzeCodebase from "./analyzer";
 import executeTasks from "./taskSolver";
 import { createConfig, type Config } from './config';
+import { getGitRemoteUrls } from './utils/git'; // New import
 
 import type { Task } from './task';
 
@@ -26,14 +27,22 @@ export async function main(): Promise<void> {
 
     const config = createConfig(userConfig);
 
+    let gitRemoteUrl: string;
+    try {
+        const { fetchUrl } = await getGitRemoteUrls();
+        gitRemoteUrl = fetchUrl || ''; // Use fetchUrl, or empty string if not found
+        if (!gitRemoteUrl) {
+            throw new Error("Could not determine git remote URL.");
+        }
+        console.log(`Detected Git remote URL: ${gitRemoteUrl}`);
+    } catch (error) {
+        console.error("Error getting git remote URL:", error);
+        process.exit(1);
+    }
+
     // Step 1: analyze the codebase and get tasks
-    const tasks: Task[] = await analyzeCodebase(config);
+    const tasks: Task[] = await analyzeCodebase(config, gitRemoteUrl);
 
     // Step 2: execute tasks based on analysis
     await executeTasks(tasks, config);
-}
-
-if (import.meta && import.meta.main) {
-	// When executed directly as a Bun script / terminal tool, run the two steps.
-	void main();
 }

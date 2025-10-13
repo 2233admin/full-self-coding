@@ -97,16 +97,17 @@ export class DockerManager {
    * Executes a task in a Docker instance
    */
   private async executeTask(task: Task, dockerInstance: DockerInstance): Promise<void> {
+    let containerName: string | null = null;
     try {
-      // Prepare Docker run options
-      const options: DockerRunOptions = {
-        image: this.options.dockerImage,
-        commands: [task.description],
-        timeoutSeconds: this.options.maxTimeoutSeconds
-      };
-      
+      // Start the container
+      containerName = await dockerInstance.startContainer(this.options.dockerImage);
+
       // Run the commands in Docker
-      const result = await dockerInstance.runCommandsInDocker(options);
+      const result = await dockerInstance.runCommands(
+        containerName,
+        [task.description], // Assuming task.description is the command to run
+        this.options.maxTimeoutSeconds
+      );
       
       if (result.status === DockerRunStatus.SUCCESS) {
         // Task completed successfully
@@ -119,9 +120,13 @@ export class DockerManager {
         this.handleTaskFailure(task, result.output, result.error || 'Unknown error');
       }
     } catch (error) {
-      // Handle any exceptions
+      // Handle any exceptions during container start or command execution
       this.handleTaskFailure(task, '', `Exception: ${error}`);
     } finally {
+      // Ensure container is shut down
+      if (containerName) {
+        await dockerInstance.shutdownContainer(containerName);
+      }
       // Remove the task from running tasks
       this.runningTasks.delete(task.ID);
       

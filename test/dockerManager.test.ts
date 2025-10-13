@@ -16,34 +16,46 @@ function createTask(id: string, title: string, description: string): Task {
   };
 }
 
-// Track Docker instances created
+
+
+// Create a mock for DockerInstance with tracking
 let runningInstances = 0;
 let maxRunningInstances = 0;
 
-// Create a mock for DockerInstance with tracking
-const mockRunCommandsInDocker = mock(async () => {
-  // Track instance usage
-  runningInstances++;
-  maxRunningInstances = Math.max(maxRunningInstances, runningInstances);
-  
-  // Simulate a delay to mimic Docker execution
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
-  // Simulate instance being destroyed after task completion
-  runningInstances--;
-  
-  return {
-    status: DockerRunStatus.SUCCESS,
-    output: "Task executed successfully",
-    error: null
-  };
+const mockStartContainer = mock(async (image: string) => {
+    runningInstances++;
+    maxRunningInstances = Math.max(maxRunningInstances, runningInstances);
+    return `mock-container-${Math.random().toString(36).slice(2, 10)}`;
+});
+
+const mockRunCommands = mock(async (containerName: string, commands: string[], timeoutSeconds: number) => {
+    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate delay
+    return {
+        output: "Task executed successfully",
+        success: true,
+        status: DockerRunStatus.SUCCESS,
+        error: undefined
+    };
+});
+
+const mockShutdownContainer = mock(async (containerName: string) => {
+    runningInstances--;
 });
 
 // Mock the entire module
 mock.module("../src/dockerInstance", () => {
   // Create a mock DockerInstance class
   class MockDockerInstance {
-    runCommandsInDocker = mockRunCommandsInDocker;
+    startContainer = mockStartContainer;
+    runCommands = mockRunCommands;
+    shutdownContainer = mockShutdownContainer;
+    // Keep runCommandsInDocker for backward compatibility if needed, or remove if not used
+    async runCommandsInDocker(options: any) {
+        const containerName = await this.startContainer(options.image);
+        const result = await this.runCommands(containerName, options.commands, options.timeoutSeconds);
+        await this.shutdownContainer(containerName);
+        return result;
+    }
   }
 
   return {
