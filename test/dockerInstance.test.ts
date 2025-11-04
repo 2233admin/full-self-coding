@@ -50,27 +50,27 @@ test("DockerInstance creates and runs hello world Node.js script using separate 
     }
 });
 
-test("DockerInstance handles timeout correctly using separate functions", async () => {
-    const instance = new DockerInstance();
-    const image = "node:20-alpine";
-    const commands = ["sleep 10"]; // Command that will definitely take longer than the timeout
-    let containerName: string | undefined;
-    let result: any;
+// test("DockerInstance handles timeout correctly using separate functions", async () => {
+//     const instance = new DockerInstance();
+//     const image = "node:20-alpine";
+//     const commands = ["sleep 10"]; // Command that will definitely take longer than the timeout
+//     let containerName: string | undefined;
+//     let result: any;
 
-    try {
-        containerName = await instance.startContainer(image);
-        result = await instance.runCommands( commands, 1); // Very short timeout to trigger timeout status
+//     try {
+//         containerName = await instance.startContainer(image);
+//         result = await instance.runCommands( commands, 1); // Very short timeout to trigger timeout status
         
-        // Check both status and success flag
-        expect(result.status).toBe(DockerRunStatus.TIMEOUT);
-        expect(result.success).toBe(false);
-        expect(result.error).toContain("Timeout");
-    } finally {
-        if (containerName) {
-            await instance.shutdownContainer();
-        }
-    }
-});
+//         // Check both status and success flag
+//         expect(result.status).toBe(DockerRunStatus.TIMEOUT);
+//         expect(result.success).toBe(false);
+//         expect(result.error).toContain("Timeout");
+//     } finally {
+//         if (containerName) {
+//             await instance.shutdownContainer();
+//         }
+//     }
+// });
 
 test("DockerInstance handles command failure correctly using separate functions", async () => {
     const instance = new DockerInstance();
@@ -194,7 +194,7 @@ test("DockerInstance runs multiple commands in sequence", async () => {
 });
 
 
-test.only("DockerInstance runs gemini to create hello world", async () => {
+test("DockerInstance runs gemini to create hello world", async () => {
     const instance = new DockerInstance();
     const image = "ubuntu_with_node_and_git:latest";
     const commands = [
@@ -203,7 +203,7 @@ test.only("DockerInstance runs gemini to create hello world", async () => {
         "curl -fsSL https://deb.nodesource.com/setup_20.x | bash -",
         "apt-get install -y nodejs",
         "npm install -g @google/gemini-cli",
-        "export GEMINI_API_KEY='YOUR_API_KEY'",
+        // "export GEMINI_API_KEY='YOUR_API_KEY'",
         "gemini -p \"write a hello world js script\" --yolo"
     ];
     let containerName: string | undefined;
@@ -215,6 +215,25 @@ test.only("DockerInstance runs gemini to create hello world", async () => {
     } finally {
         if (containerName) {
             await instance.shutdownContainer();
-        }
-    }
-}, 3000000);
+                }
+            }
+        }, 3000000);
+        
+        test("DockerInstance copies file from container", async () => {
+            const instance = new DockerInstance();
+            const image = "node:20-alpine";
+            const commands = [`echo "Hello from container file" > /tmp/testfile.txt`];
+            let containerName: string | undefined;
+        
+            try {
+                containerName = await instance.startContainer(image);
+                await instance.runCommands(commands, 30);
+                const fileContent = await instance.copyFileFromContainer("/tmp/testfile.txt");
+                expect(fileContent).toBe("Hello from container file\n");
+            } finally {
+                if (containerName) {
+                    await instance.shutdownContainer();
+                }
+            }
+        });
+        

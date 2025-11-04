@@ -4,13 +4,18 @@ import { DockerInstance, DockerRunStatus } from './dockerInstance';
 import { analyzerPrompt } from './prompts/analyzerPrompt';
 import { getCodingStyle } from './codingStyle';
 import { getWorkStyleDescription, WorkStyle } from './workStyle';
-import { trimJSON } from './utils/trimJSON';
+import { trimJSONObjectArray } from './utils/trimJSON';
 
 /**
  * Analyzes the codebase and generates a list of tasks to be executed
  * @returns Promise<Task[]> Array of tasks identified from the codebase analysis
  */
-export async function analyzeCodebase(config: Config, gitRemoteUrl: string, shutdownContainer: boolean = true): Promise<Task[]> {
+export async function analyzeCodebase(
+    config: Config, 
+    gitRemoteUrl: string, 
+    shutdownContainer: boolean = true,
+    extraComandsBeforeAnalysis?: string
+): Promise<Task[]> {
     if (config.agentType !== SWEAgentType.GEMINI_CLI) {
         throw new Error(`Agent type ${config.agentType} is not implemented yet.`);
     }
@@ -20,69 +25,64 @@ export async function analyzeCodebase(config: Config, gitRemoteUrl: string, shut
     let tasks: Task[] = [];
 
     try {
-        // Start the Docker container once
         const dockerImageRef = config.dockerImageRef || 'node:latest';
         containerName = await docker.startContainer(dockerImageRef);
 
-        const commandsToRunInDocker: string[] = [];
+        const allCommands: string[] = [];
 
-        // 3. In the docker, run "git clone" to clone the source code repo
-        commandsToRunInDocker.push(`git clone ${gitRemoteUrl} /app/repo`);
-        commandsToRunInDocker.push(`cd /app/repo`);
+        // 1. Clone the source code repository
+        allCommands.push(`git clone ${gitRemoteUrl} /app/repo`);
 
+        // 2. Setup necessary tools (curl, nodejs, npm)
+        allCommands.push("apt-get update");
+        allCommands.push("apt-get install -y curl");
+        allCommands.push("curl -fsSL https://deb.nodesource.com/setup_20.x | bash -");
+        allCommands.push("apt-get install -y nodejs");
 
+        // 3. Install gemini-cli globally if agent type is GEMINI_CLI
+        if (config.agentType === SWEAgentType.GEMINI_CLI) {
+            allCommands.push(`npm install -g @google/gemini-cli`);
+        }
 
-
-
-        // If swe agent is gemini-cli, create the analyzer prompt, start the gemini cli in headeless mode and yolo mode, gemini -p "ANALYZER_PROMPT" --yolo;
+        // 4. Create the fsc directory and prompt.txt
         const workStyleDescription = await getWorkStyleDescription(config.workStyle || WorkStyle.DEFAULT, { customLabel: config.customizedWorkStyle });
         const codingStyleDescription = getCodingStyle(config.codingStyleLevel || 0);
-
         const prompt = analyzerPrompt(workStyleDescription, codingStyleDescription, config);
-        commandsToRunInDocker.push(`mkdir -p ./fsc`);
-        commandsToRunInDocker.push(`echo "${prompt}" > ./fsc/prompt.txt`);
-        const setupCommands = [
-            "apt-get update",
-            "apt-get install -y curl",
-            "curl -fsSL https://deb.nodesource.com/setup_20.x | bash -",
-            "apt-get install -y nodejs",
-            //"npm install -g @google/gemini-cli",
-            //"export GEMINI_API_KEY='AIzaSyA-v_UD5AHnDvHBZQc2BWf_UQQYebKOkeo'",
-        ];
 
-        for (const cmd of setupCommands) {
-            commandsToRunInDocker.push(cmd);
-        }
+        allCommands.push(`mkdir -p /app/repo/fsc`); // -p ensures parent directories are created if they don't exist
+        allCommands.push(`echo "${prompt}" > /app/repo/fsc/prompt.txt`);
+        allCommands.push(`ls -l /app/repo/fsc/prompt.txt`); // Verify prompt.txt creation
 
-        // 4. Based on the config object, check if api key needs to be export in terminal for gemini cli, codex or claude code
-        if (config.googleGeminiApiKey) {
-            commandsToRunInDocker.push(`export GEMINI_API_KEY=${config.googleGeminiApiKey}`);
-        }
-        if (config.claudeApiKey) {
-            commandsToRunInDocker.push(`export ANTHROPIC_API_KEY=${config.claudeApiKey}`);
-        }
-        if (config.openAICodexApiKey) {
-            commandsToRunInDocker.push(`export OPENAI_API_KEY=${config.openAICodexApiKey}`);
+        // 5. Prepare API key export and gemini command
+        let geminiCommand = `gemini -p "all the task descriptions are located at /app/repo/fsc/prompt.txt, please read and execute" --yolo`;
+        let apiKeyExportCommand: string | undefined;
+
+        if (config.googleGeminiApiKey && config.googleGeminiAPIKeyExportNeeded) {
+            apiKeyExportCommand = `export GEMINI_API_KEY=${config.googleGeminiApiKey}`;
+        } else if (config.anthropicApiKey && config.anthropicAPIKeyExportNeeded) {
+            apiKeyExportCommand = `export ANTHROPIC_API_KEY=${config.anthropicApiKey}`;
+        } else if (config.openAICodexApiKey && config.openAICodexAPIKeyExportNeeded) {
+            apiKeyExportCommand = `export OPENAI_API_KEY=${config.openAICodexApiKey}`;
         }
 
-        // 5. Based on the config object, run npm install to install google gemini cli globally;
-        if (config.agentType === SWEAgentType.GEMINI_CLI) {
-            commandsToRunInDocker.push(`npm install -g @google/gemini-cli`);
+        if (apiKeyExportCommand) {
+            geminiCommand = `${apiKeyExportCommand} && ${geminiCommand}`;
         }
 
-        commandsToRunInDocker.push(`gemini -p "all the task descriptions are located at ./fsc/prompt.txt, please read and execute" --yolo`);
+        if (extraComandsBeforeAnalysis) {
+            allCommands.push(extraComandsBeforeAnalysis);
+        }
+        allCommands.push(geminiCommand);
 
         console.log("Commands to run in Docker:");
-        for (const command of commandsToRunInDocker) {
+        for (const command of allCommands) {
             console.log(command);
         }
 
-        console.log("The container name is:", docker.getContainerName());
-
-        // Execute all commands in Docker
+        // Execute all commands in a single run
         const dockerResult = await docker.runCommands(
-            commandsToRunInDocker,
-            config.dockerTimeoutSeconds || 300
+            allCommands,
+            config.dockerTimeoutSeconds? config.dockerTimeoutSeconds : 0
         );
 
         if (dockerResult.status !== DockerRunStatus.SUCCESS) {
@@ -90,12 +90,11 @@ export async function analyzeCodebase(config: Config, gitRemoteUrl: string, shut
             throw new Error(`Docker command execution failed: ${dockerResult.error || dockerResult.output}`);
         }
 
-        // 7. After the gemini cli finish the task, read the "./fsc/task.json" file in the terminal and send the json string back to the analyzer
-        // Assuming gemini cli writes to /app/repo/fsc/tasks.json inside the container
+        // 6. Read the generated tasks.json
         const readTasksCommand = `cat /app/repo/fsc/tasks.json`;
         const readTasksResult = await docker.runCommands(
             [readTasksCommand],
-            60 // Short timeout for reading a file
+            config.dockerTimeoutSeconds? config.dockerTimeoutSeconds : 0
         );
 
         if (readTasksResult.status !== DockerRunStatus.SUCCESS) {
@@ -104,7 +103,7 @@ export async function analyzeCodebase(config: Config, gitRemoteUrl: string, shut
         }
 
         try {
-            const outputTasksInString = trimJSON(readTasksResult.output);
+            const outputTasksInString = trimJSONObjectArray(readTasksResult.output);
             console.log("***Output tasks in string:\n\n", outputTasksInString);
             tasks = JSON.parse(outputTasksInString);
         } catch (error) {
@@ -112,9 +111,8 @@ export async function analyzeCodebase(config: Config, gitRemoteUrl: string, shut
             throw new Error(`Error parsing tasks.json: ${error}`);
         }
     } finally {
-        // Ensure the Docker container is shut down
-        if (containerName) {
-            //await docker.shutdownContainer(containerName);
+        if (shutdownContainer) {
+            await docker.shutdownContainer();
         }
     }
     return tasks;

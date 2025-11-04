@@ -31,7 +31,7 @@ export interface Config {
      * If none are provided, and the APIKeyExportNeeded is set to false,
      * the agent will not import any API keys.
      */
-    APIKeyExportNeeded?: boolean;
+    googleGeminiAPIKeyExportNeeded?: boolean;
 
     /** 
      * API key for Google Gemini CLI
@@ -43,13 +43,16 @@ export interface Config {
      * API key for Claude Code
      * export export ANTHROPIC_API_KEY='your-api-key-here'
      */
-    claudeApiKey?: string;
+    anthropicApiKey?: string;
+    anthropicAPIKeyExportNeeded?: boolean;
+    anthropicApiBaseUrl?: string;
 
     /**
      * API key for OpenAI Codex
      * export OPENAI_API_KEY=your-openai-api-key
      */
     openAICodexApiKey?: string;
+    openAICodexAPIKeyExportNeeded?: boolean;
 
     /**
      * Maximum number of Docker containers that can run locally

@@ -4,6 +4,7 @@ function streamToTextSync(stream: Uint8Array | null | undefined): string {
 	return new TextDecoder().decode(stream);
 }
 import { spawnSync } from "bun";
+import { time } from "console";
 
 /**
  * Status of Docker command execution
@@ -58,7 +59,7 @@ export class DockerInstance {
      */
     async runCommands(
         commands: string[],
-        timeoutSeconds: number = 300
+        timeoutSeconds?: number
     ): Promise<{
         output: string;
         success: boolean;
@@ -66,9 +67,9 @@ export class DockerInstance {
         error?: string;
     }> {
 
-				if (!this.containerName) {
-					throw new Error(`Container name is null, cannot run commands`);
-				}
+        if (!this.containerName) {
+            throw new Error(`Container name is null, cannot run commands`);
+        }
         let output = "";
         let error = "";
         let success = true;
@@ -86,12 +87,16 @@ export class DockerInstance {
 
         try {
             for (const cmd of commands) {
-							  console.log(`*****Running command: ${cmd}`);
-                const execResult = spawnSync([
+                console.log(`*****Running command: ${cmd}`);
+                const execResult = spawnSync( {
+                    cmd:[
                     "docker", "exec", this.containerName, "sh", "-c", cmd
-                ]);
+                        ],
+                    timeout: timeoutSeconds ? timeoutSeconds * 1000 : 0,
+                });
 
                 const cmdOut = streamToTextSync(execResult.stdout);
+                console.log(`Command output: ${cmdOut}`);
                 output += `\n$ ${cmd}\n${cmdOut}`;
 
                 if (execResult.exitCode !== 0) {
@@ -121,16 +126,42 @@ export class DockerInstance {
      * @param containerName The name of the container to shut down.
      */
     async shutdownContainer(): Promise<void> {
-				if (this.containerName)
-				{
-        	spawnSync(["docker", "rm", "-f", this.containerName]);
-				}
-				else {
-						console.log(`Container name is null, not shutting down`);
-				}
+        if (this.containerName)
+        {
+            spawnSync(["docker", "rm", "-f", this.containerName]);
+        }
+        else {
+            console.log(`Container name is null, not shutting down`);
+        }
     }
 
 	/**
 	 * Starts a Docker container, runs commands, and returns all outputs
-	 */	
+	 */
+    
+    /**
+     * Copies a file from the container and reads its content.
+     * @param containerPath The path of the file inside the container.
+     * @returns The content of the file as a string.
+     */
+    async copyFileFromContainer(containerPath: string): Promise<string> {
+        if (!this.containerName) {
+            throw new Error(`Container name is null, cannot copy file`);
+        }
+
+        const tempLocalPath = `/tmp/${Math.random().toString(36).slice(2, 10)}`;
+        
+        const copyResult = spawnSync([
+            "docker", "cp", `${this.containerName}:${containerPath}`, tempLocalPath
+        ]);
+
+        if (copyResult.exitCode !== 0) {
+            const errText = streamToTextSync(copyResult.stderr);
+            throw new Error(`Failed to copy file from container: ${errText || "Unknown error"}`);
+        }
+
+        const fileContent = await (Bun.file(tempLocalPath)).text();
+        spawnSync(["rm", tempLocalPath]);
+        return fileContent;
+    }
 }

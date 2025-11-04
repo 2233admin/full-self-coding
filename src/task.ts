@@ -47,6 +47,7 @@ export enum TaskStatus {
     FAILURE = 'failure',
     ONGOING = 'ongoing',
     NOT_STARTED = 'not_started',
+    SKIPPED = 'skipped',
 }
 
 /**
@@ -54,6 +55,17 @@ export enum TaskStatus {
  * and execution outcomes
  */
 export interface TaskResult extends Task {
+
+    /**
+     * The title of the task
+     */
+    title: string;
+
+    /**
+     * Detailed description of what the task should accomplish
+     */
+    description: string;
+
     /**
      * The status of the task execution
      */
@@ -66,13 +78,13 @@ export interface TaskResult extends Task {
     report: string;
 
     /**
-     * Git commit hash of the changes made by this task
-     * Only available when task succeeds and results in a commit
-     */
-    commitHash?: string;
-
-    /**
      * Unix timestamp (in milliseconds) when the task completed
      */
-    completedAt: number;
+    completedAt?: number;
+
+    /**
+     * 
+     * The git diff of the changes made by this task
+     */
+    gitDiff?: string;
 }

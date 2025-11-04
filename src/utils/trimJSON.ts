@@ -5,13 +5,24 @@
  * @param jsonString The string containing the JSON object.
  * @returns A string containing only the JSON object, or an empty string if no valid JSON object is found.
  */
-export function trimJSON(jsonString: string): string {
-    const firstBracket = jsonString.indexOf('[');
-    const lastBracket = jsonString.lastIndexOf(']');
+export function trimJSONObjectArray(jsonString: string): string {
+    const firstBrace = jsonString.indexOf('[');
+    const lastBrace = jsonString.lastIndexOf(']');
 
-    if (firstBracket === -1 || lastBracket === -1 || lastBracket < firstBracket) {
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
         return '';
     }
 
-    return jsonString.substring(firstBracket, lastBracket + 1);
+    return jsonString.substring(firstBrace, lastBrace + 1);
+}
+
+export function trimJSONSingleObject(jsonString: string): string {
+    const firstBrace = jsonString.indexOf('{');
+    const lastBrace = jsonString.lastIndexOf('}');
+
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+        return '';
+    }
+
+    return jsonString.substring(firstBrace, lastBrace + 1);
 }

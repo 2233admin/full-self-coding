@@ -59,7 +59,8 @@ export class DockerManager {
         ...task,
         status: TaskStatus.NOT_STARTED,
         report: '',
-        completedAt: 0
+        completedAt: 0,
+        gitDiff: '',
       });
     }
   }
@@ -210,9 +211,9 @@ export class DockerManager {
         ? Date.now() 
         : taskResult.completedAt;
       
-      if (commitHash) {
-        taskResult.commitHash = commitHash;
-      }
+      // if (commitHash) {
+      //   taskResult.gitHash = commitHash;
+      // }
       
       this.taskResults.set(taskId, taskResult);
     }
