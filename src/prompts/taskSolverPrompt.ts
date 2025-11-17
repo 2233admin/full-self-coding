@@ -3,6 +3,7 @@ import type {Task} from '../task';
 import { getCodingStyle } from '../codingStyle';
 
 export function taskSolverPrompt(task: Task, config: Config): string {
+    // return test_string;
     return `
 The path of the source code is located at /app/repo.
 
@@ -21,16 +22,22 @@ Now please complete your task. Here are the rules:
     "report": "A very detailed report of the task execution."
 }
 
+
 6. Please double check the finalReport.json file to make sure it is correct in JSON format and can be parsed successfully.
 7. After all tasks are completed, please run "node /app/diff/run.js". This script will save the structured git diff to /app/git_diff.txt.
 
 Below is your work style. Please follow it as much as possible: 
 ${config.workStyle}
 
+
 Below is your coding style. When writing code, please follow it as much as possible:
 ${getCodingStyle(config.codingStyleLevel || 0)}
 
-And here is your task information, in JSON format, please use it as the reference, and start your work:
-${JSON.stringify(task)}.
-    `;  
+And here is your task information, in JSON format, please use it as the reference, and start your work.
+
+Task title: ${task.title}
+
+Task description: ${task.description}
+
+Task ID: ${task.ID}`;  
 }

@@ -1,8 +1,22 @@
-export async function getGitRemoteUrls(): Promise<{ fetchUrl?: string; pushUrl?: string }> {
-    try {
-        const gitRemoteResult = await Bun.$`git remote -v`.text();
-        const lines = gitRemoteResult.split('\n').filter(line => line.trim() !== '');
+import { spawnSync } from "bun";
 
+function streamToTextSync(stream: Uint8Array | null | undefined): string {
+    if (!stream) return "";
+    return new TextDecoder().decode(stream);
+}
+
+export async function getGitRemoteUrls(): Promise<{ fetchUrl?: string; pushUrl?: string }> {
+
+    try {
+        const gitRemoteResult = spawnSync(["git", "remote", "-v"]);
+
+        if (gitRemoteResult.exitCode !== 0) {
+            console.error("Failed to run git remote command");
+            return {};
+        }
+
+        const gitRemoteText = streamToTextSync(gitRemoteResult.stdout);
+        const lines = gitRemoteText.split('\n').filter(line => line.trim() !== '');
         let fetchUrl: string | undefined;
         let pushUrl: string | undefined;
 
@@ -18,7 +32,6 @@ export async function getGitRemoteUrls(): Promise<{ fetchUrl?: string; pushUrl?:
                 }
             }
         }
-
         if (!fetchUrl && !pushUrl) {
             console.warn("No git remote 'origin' found.");
         }

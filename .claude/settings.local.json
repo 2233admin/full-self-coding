@@ -5,7 +5,20 @@
       "WebSearch",
       "WebFetch(domain:news.google.com)",
       "WebFetch(domain:www.bbc.com)",
-      "Bash(bun test:*)"
+      "Bash(bun test:*)",
+      "Bash(node:*)",
+      "Bash(bun:*)",
+      "Bash(cat:*)",
+      "Bash(npm link:*)",
+      "Bash(npm unlink:*)",
+      "Bash(full-self-coding)",
+      "Bash(npx full-self-coding:*)",
+      "Bash(/Users/xinranwang/Documents/GitHub/full-self-coding/dist/main.js)",
+      "Bash(timeout:*)",
+      "Bash(/tmp)",
+      "Bash(chmod:*)",
+      "Bash(./test-cli.js)",
+      "Bash(./dist/main.js:*)"
     ],
     "deny": [],
     "ask": []

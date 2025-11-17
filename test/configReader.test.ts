@@ -30,7 +30,7 @@ describe('ConfigReader', () => {
     describe('Constructor', () => {
         it('should initialize with default options', () => {
             const reader = new ConfigReader();
-            expect(reader.getConfigPath()).toContain('.fsc/config.json');
+            expect(reader.getConfigPath()).toContain('.config/full-self-coding/config.json');
         });
 
         it('should initialize with custom config directory', () => {
@@ -41,7 +41,7 @@ describe('ConfigReader', () => {
 
         it('should initialize with custom config filename', () => {
             const reader = new ConfigReader({ configFileName: 'custom.json' });
-            expect(reader.getConfigPath()).toContain('.fsc/custom.json');
+            expect(reader.getConfigPath()).toContain('.config/full-self-coding/custom.json');
         });
 
         it('should initialize with custom config directory and filename', () => {

@@ -37,7 +37,7 @@ async function saveDiffAsText() {
     const outputFile = '/app/git_diff.txt';
     fs.writeFileSync(outputFile, diffText);
 
-    console.log("Saved git diff to " + outputFile);
+    console.log('Saved git diff to ' + outputFile);
   } catch (err) {
     console.error('Error getting git diff:', err);
   }

@@ -130,12 +130,12 @@ export interface Config {
  * Default configuration values
  */
 export const DEFAULT_CONFIG: Config = {
-    agentType: SWEAgentType.GEMINI_CLI,
-    maxDockerContainers: 5,
+    agentType: SWEAgentType.CLAUDE_CODE,
+    maxDockerContainers: 10,
     dockerImageRef: 'node:latest',
-    maxParallelDockerContainers: 2,
-    dockerTimeoutSeconds: 300,
-    maxTasks: 10,
+    maxParallelDockerContainers: 10,
+    dockerTimeoutSeconds: 300000,
+    maxTasks: 100,
     minTasks: 1,
     dockerMemoryMB: 512,
     dockerCpuCores: 1,

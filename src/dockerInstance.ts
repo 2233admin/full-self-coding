@@ -87,7 +87,7 @@ export class DockerInstance {
 
         try {
             for (const cmd of commands) {
-                console.log(`*****Running command: ${cmd}`);
+                console.log(`*****Running command: ${cmd} at docker: ${this.containerName}`);
                 const execResult = spawnSync( {
                     cmd:[
                     "docker", "exec", this.containerName, "sh", "-c", cmd

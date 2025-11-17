@@ -5,13 +5,13 @@
   "module": "src/main.ts",
   "type": "module",
   "bin": {
-    "full-self-coding": "./dist/main.js"
+    "full-self-coding": "./src/main.ts"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "bun build ./src/main.ts --target node --outdir dist",
+    "build": "bun build ./src/main.ts --target bun --outdir dist",
     "prepare": "bun run build",
     "start": "bun src/main.ts"
   },

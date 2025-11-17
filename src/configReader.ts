@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import type { Config } from './config';
 import { SWEAgentType, DEFAULT_CONFIG, createConfig } from './config';
 import { WorkStyle } from './workStyle';
@@ -7,7 +8,7 @@ import { WorkStyle } from './workStyle';
 export interface ConfigReaderOptions {
     /**
      * Custom path to the config directory
-     * @default "./.fsc"
+     * @default "~/.config/full-self-coding"
      */
     configDir?: string;
 
@@ -22,6 +23,12 @@ export interface ConfigReaderOptions {
      * @default false - returns default config when file is missing
      */
     throwOnMissing?: boolean;
+
+    /**
+     * Whether to create the config directory if it doesn't exist
+     * @default true
+     */
+    createDirectory?: boolean;
 }
 
 /**
@@ -30,12 +37,40 @@ export interface ConfigReaderOptions {
 export class ConfigReader {
     private readonly configPath: string;
     private readonly throwOnMissing: boolean;
+    private readonly createDirectory: boolean;
 
     constructor(options: ConfigReaderOptions = {}) {
-        const configDir = options.configDir || './.fsc';
+        const configDir = options.configDir || this.getDefaultConfigDir();
         const configFileName = options.configFileName || 'config.json';
         this.configPath = path.resolve(configDir, configFileName);
         this.throwOnMissing = options.throwOnMissing || false;
+        this.createDirectory = options.createDirectory ?? true;
+
+        // Create config directory if it doesn't exist and createDirectory is true
+        if (this.createDirectory && !this.configExists()) {
+            this.ensureConfigDirectory();
+        }
+    }
+
+    /**
+     * Get the default configuration directory path
+     * @returns Path to ~/.config/full-self-coding
+     */
+    private getDefaultConfigDir(): string {
+        return path.join(os.homedir(), '.config', 'full-self-coding');
+    }
+
+    /**
+     * Ensure the configuration directory exists
+     */
+    private ensureConfigDirectory(): void {
+        try {
+            const configDir = path.dirname(this.configPath);
+            fs.mkdirSync(configDir, { recursive: true });
+        } catch (error) {
+            // If directory creation fails, it's not critical - we'll handle it in read/write operations
+            console.warn(`Warning: Could not create config directory: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 
     /**
@@ -121,12 +156,12 @@ export class ConfigReader {
         // Validate numeric fields
         this.validateNumericField(validatedConfig, 'maxDockerContainers', 1, 100);
         this.validateNumericField(validatedConfig, 'maxParallelDockerContainers', 1, 50);
-        this.validateNumericField(validatedConfig, 'dockerTimeoutSeconds', 1, 3600);
-        this.validateNumericField(validatedConfig, 'maxTasks', 1, 1000);
-        this.validateNumericField(validatedConfig, 'minTasks', 1, 100);
+        this.validateNumericField(validatedConfig, 'dockerTimeoutSeconds', 1, 360000000);
+        // this.validateNumericField(validatedConfig, 'maxTasks', 1, 1000);
+        // this.validateNumericField(validatedConfig, 'minTasks', 1, 100);
         this.validateNumericField(validatedConfig, 'dockerMemoryMB', 128, 8192);
         this.validateNumericField(validatedConfig, 'dockerCpuCores', 1, 16);
-        this.validateNumericField(validatedConfig, 'codingStyleLevel', 0, 10);
+        // this.validateNumericField(validatedConfig, 'codingStyleLevel', 0, 10);
 
         // Validate logical constraints
         if (validatedConfig.maxTasks && validatedConfig.minTasks && validatedConfig.minTasks > validatedConfig.maxTasks) {
@@ -199,6 +234,14 @@ export class ConfigReader {
      */
     public getConfigPath(): string {
         return this.configPath;
+    }
+
+    /**
+     * Get the default configuration directory path
+     * @returns Path to ~/.config/full-self-coding
+     */
+    public getDefaultConfigDirectory(): string {
+        return this.getDefaultConfigDir();
     }
 
     /**

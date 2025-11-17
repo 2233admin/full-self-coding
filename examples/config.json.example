@@ -1,0 +1,21 @@
+{
+  "agentType": "gemini-cli",
+  "googleGeminiApiKey": "your-api-key-here",
+  "googleGeminiAPIKeyExportNeeded": true,
+  "anthropicAPIKey": "your-anthropic-api-key",
+  "anthropicAPIKeyExportNeeded": false,
+  "anthropicAPIBaseUrl": "https://api.anthropic.com",
+  "openAICodexApiKey": "your-openai-api-key",
+  "maxDockerContainers": 5,
+  "maxParallelDockerContainers": 2,
+  "dockerImageRef": "ubuntu:22.04",
+  "dockerTimeoutSeconds": 300,
+  "maxTasks": 10,
+  "minTasks": 1,
+  "dockerMemoryMB": 512,
+  "dockerCpuCores": 1,
+  "workStyle": "default",
+  "codingStyleLevel": 0,
+  "customizedWorkStyle": "",
+  "customizedCodingStyle": ""
+}

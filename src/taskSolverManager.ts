@@ -27,6 +27,7 @@ export class TaskSolverManager {
                 const task = this.taskQueue.shift();
                 if (task) {
                     this.startTask(task);
+                    console.log(`Started task ${task.ID}`);
                 }
             }
             await new Promise(resolve => setTimeout(resolve, 1000)); // Check every second
