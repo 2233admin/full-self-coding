@@ -95,15 +95,6 @@ export async function main(): Promise<void> {
     // step 5. save the final report to "./.fsc/finalReport.txt"
     const yymmddhhmmss = getYYMMDDHHMMSS();
 
-    // try to create "./.fsc" folder first, and if it already exists, just ignore the error
-    try {
-        fs.mkdirSync("./.fsc");
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-            console.error(`Error creating "./.fsc" folder: ${error}`);
-            process.exit(1);
-        }
-    }
 
     // Save final report to ~/Library/Logs/full-self-coding directory
     const logDir = process.env.HOME + "/Library/Logs/full-self-coding";
