@@ -708,9 +708,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 📞 Support
 
-- **GitHub Issues**: [Report bugs and request features](https://github.com/your-org/full-self-coding/issues)
-- **Discussions**: [Community discussions and Q&A](https://github.com/your-org/full-self-coding/discussions)
-- **Documentation**: [Full documentation site](https://full-self-coding.docs.com)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding/issues)
+- **Discussions**: [Community discussions and Q&A](https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding/discussions)
+- **Documentation**: [Full documentation site](https://full-self-coding.docs.com) (Coming Soon)
 
 ---
 
