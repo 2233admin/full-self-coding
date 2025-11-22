@@ -7,6 +7,7 @@ import { getWorkStyleDescription, WorkStyle } from './workStyle';
 import { trimJSONObjectArray } from './utils/trimJSON';
 import { getClaudeCommand } from './SWEAgent/claudeCodeCommands';
 import { getGeminiCommand } from './SWEAgent/geminiCodeCommands';
+import { CursorInstallationWrapper, getCursorCommand } from './SWEAgent/cursorCommands';
 
 /**
  * Analyzes the codebase and generates a list of tasks to be executed
@@ -97,6 +98,9 @@ export async function analyzeCodebase(
             case SWEAgentType.CODEX:
                 allCommands.push(`npm install -g @openai/codex`);
                 break;
+            case SWEAgentType.CURSOR:
+                allCommands.push(...CursorInstallationWrapper());
+                break;
             default:
                 throw new Error(`Unsupported agent type: ${config.agentType}`);
         }
@@ -115,6 +119,9 @@ export async function analyzeCodebase(
                 break;
             case SWEAgentType.CODEX:
                 throw new Error("SWEAgentType.CODEX is not implemented yet for analyzeCodebase");
+            case SWEAgentType.CURSOR:
+                allCommands.push(getCursorCommand(config, true));
+                break;
             default:
                 throw new Error(`Unsupported agent type: ${config.agentType}`);
         }

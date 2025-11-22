@@ -7,7 +7,7 @@ export enum SWEAgentType {
     GEMINI_CLI = 'gemini-cli',
     CLAUDE_CODE = 'claude-code',
     CODEX = 'codex',
-    // Add more agent types as needed
+    CURSOR = 'cursor',
 }
 
 /**
@@ -53,6 +53,13 @@ export interface Config {
      */
     openAICodexApiKey?: string;
     openAICodexAPIKeyExportNeeded?: boolean;
+
+
+    /**
+     * API key for Cursor CLI
+     */
+    cursorAPIKey?: string; 
+    cursorAPIKeyExportNeeded?:boolean;
 
     /**
      * Maximum number of Docker containers that can run locally

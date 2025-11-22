@@ -13,7 +13,7 @@ export function getGeminiCommand(config:Config , bIsAnalyzer: boolean = true): s
     } else if (config.openAICodexApiKey && config.openAICodexAPIKeyExportNeeded) {
         apiKeyExportCommand = `export OPENAI_API_KEY=${config.openAICodexApiKey}`;
     }
-
+    
     if (apiKeyExportCommand) {
         geminiCommand = `${apiKeyExportCommand} && ${geminiCommand}`;
     }
