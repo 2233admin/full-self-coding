@@ -92,9 +92,13 @@ Full Self Coding (FSC) is a sophisticated framework designed to automate softwar
 ### 系统数据流
 
 ```
-用户请求 → Gateway → Session创建 → DAG解析 → 调度器选节点 → SSH下发 → Docker执行 → 结果汇总 → Session关闭
-                           ↓
-                    错误分类 → 重试/熔断
+用户请求 → Gateway → Session创建 → DAG解析 → 调度器选节点 → WireGuard下发 → Docker执行 → 结果汇总 → Session关闭
+                              ↓
+                       错误分类 → 重试/熔断
+
+通信方式:
+- 节点间: WireGuard 内网 (10.10.0.x)
+- 备用: SSH 隧道
 ```
 
 ### Supported Agent Types
