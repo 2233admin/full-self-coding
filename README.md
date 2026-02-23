@@ -1,710 +1,233 @@
-# Full Self Coding (FSC)
+# FSC 多节点集群部署方案
 
-No prompts, no instructions, no plans, you have 100~1000 AI agent coding in parallel now, solving all possible problems and issues in your codebase.
+> 基于 Full Self Coding + OpenClaw + WireGuard 的多Agent代码修复集群
 
-## 🌟 Overview
+无需提示词、无需指令、无需计划，让你拥有 100~1000 个 AI Agent 并行修复代码库中的所有问题。
 
-Full Self Coding (FSC) is a sophisticated framework designed to automate software engineering tasks by integrating multiple AI agents (Claude Code, Gemini CLI) within Docker containers. It provides intelligent codebase analysis, task decomposition, automated code modification, and comprehensive reporting capabilities.
+## 🌟 概述
 
-### Key Features
+FSC 多节点集群部署方案是一个生产级的多Agent代码修复系统，整合了以下核心技术：
 
-- **🤖 Multi-Agent Support**: Integration with Claude Code, Gemini CLI, and extensible agent architecture
-- **📦 Containerized Execution**: Secure, isolated Docker-based task execution
-- **🔍 Intelligent Analysis**: Automated codebase analysis and task identification
-- **⚙️ Flexible Configuration**: Hierarchical configuration system with environment variable support
-- **📊 Comprehensive Reporting**: Detailed execution reports with git diff tracking
-- **🔄 Parallel Processing**: Multi-container parallel task execution with resource management
-- **🛡️ Robust Error Handling**: Comprehensive error recovery and graceful degradation
+| 项目 | 用途 | 仓库 |
+|------|------|------|
+| **Full Self Coding (FSC)** | 多Agent并行代码修复框架 | https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding |
+| **OpenClaw** | Agent调度与Session管理 | https://github.com/openclaw/openclaw |
+| **WireGuard** | 内网互联 | https://www.wireguard.com/ |
 
-## 🏗️ Architecture
+### 核心特性
 
-### Core Components
+- 🤖 **多Agent支持**: 集成 Claude Code、Gemini CLI，支持扩展
+- 📦 **容器化执行**: 基于 Docker 的安全隔离执行环境
+- 🔍 **智能分析**: 自动代码库分析与任务识别
+- ⚙️ **灵活配置**: 分层配置系统，支持环境变量
+- 📊 **详细报告**: Git Diff 追踪，完整变更记录
+- 🔄 **并行处理**: 多容器并行任务执行，资源管理
+- 🛡️ **错误处理**: 完善的错误恢复与优雅降级
+
+## 🏗️ 架构
+
+### 核心组件
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   ConfigReader  │    │   DockerInstance │    │   TaskSolver    │
-│                 │    │                  │    │                 │
-│ • Configuration │    │ • Container      │    │ • Task          │
-│   Management    │    │   Management     │    │   Execution     │
-│ • Validation    │    │ • File Operations│    │ • Result        │
-│ • Merging       │    │ • Command        │    │   Processing    │
-│ • Environment   │    │   Execution      │    │                 │
-│   Variables     │    │ • Monitoring     │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌──────────────────┐
-                    │     Analyzer     │
-                    │                  │
-                    │ • Codebase       │
-                    │   Analysis       │
-                    │ • Task           │
-                    │   Generation     │
-                    │ • Agent          │
-                    │   Coordination   │
-                    └──────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    OpenClaw Gateway                         │
+├─────────────────────────────────────────────────────────────┤
+│  Session Manager                                            │
+│  ├── 主会话: 任务分析 + 调度分发                            │
+│  ├── 子会话1: Agent-1 (Docker执行)                        │
+│  ├── 子会话2: Agent-2 (Docker执行)                        │
+│  └── 子会话N: Agent-N (Docker执行)                        │
+│                                                             │
+│  Multi-Agent Routing                                       │
+│  └── 智能路由: 任务类型 → 合适节点                        │
+└─────────────────────────────────────────────────────────────┘
+         │                    │                    │
+    ┌────┴────┐         ┌────┴────┐         ┌────┴────┐
+    │ 中央节点  │         │ 硅谷节点  │         │ 东京节点  │
+    │<NODE1_IP> │         │<NODE2_IP> │         │<NODE3_IP> │
+    │(调度+分析)│         │(Claude)  │         │(Gemini)  │
+    └─────────┘         └─────────┘         └─────────┘
+         │                                       │
+         └───────────────────┬───────────────────┘
+                             │
+                    WireGuard 内网
 ```
 
-### Supported Agent Types
+### 支持的 Agent 类型
 
-| Agent Type | Description | Container Image | Key Features |
-|------------|-------------|----------------|--------------|
-| **CLAUDE_CODE** | Anthropic Claude Code integration | `node:latest` | Advanced code analysis, natural language processing |
-| **GEMINI_CLI** | Google Gemini CLI integration | `node:latest` | Google's AI model integration, fast response |
-| **CODEX** | OpenAI Codex integration (planned) | - | OpenAI GPT-based code completion |
+| Agent类型 | 描述 | 容器镜像 | 关键特性 |
+|-----------|------|----------|----------|
+| **CLAUDE_CODE** | Anthropic Claude Code 集成 | `node:latest` | 高级代码分析、自然语言处理 |
+| **GEMINI_CLI** | Google Gemini CLI 集成 | `node:latest` | Google AI模型集成，快速响应 |
 
-## 🚀 Getting Started
+## 🚀 快速开始
 
-### Prerequisites
+### 前置要求
 
-- **Bun** (v1.0.0 or higher)
-- **Docker** (latest version)
-- **Git** (for repository operations)
+- **Bun** (v1.0.0+)
+- **Docker** (最新版本)
+- **Git** (版本控制)
+- **WireGuard** (内网互联)
 
-
-### Quick Start
-
-1. **Install bun.js on your machine**
-   ```bash
-   curl -fsSL https://bun.sh/install | bash
-   ```
-
-2. **Clone and setup the project**
-   ```bash
-   git clone https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding.git
-   cd full-self-coding
-   bun install
-   ```
-
-3. **Run on a repository**
-   ```bash
-   # Run CLI from source
-   bun run start
-
-   # Or run on a specific repository
-   full-self-coding
-   ```
-
-### Installation as npm Package
-
-The project is structured as a monorepo with two main packages:
-
-- **@full-self-coding/core**: Core library for code analysis and task execution
-- **@full-self-coding/cli**: Command-line interface
-
-#### Core Package
+### 1. 安装 Bun
 
 ```bash
-npm install @full-self-coding/core
+curl -fsSL https://bun.sh/install | bash
 ```
 
-#### CLI Package
+### 2. 安装 Docker
 
 ```bash
-npm install -g @full-self-coding/cli
-# Then run:
-full-self-coding-cli
+# OpenCloudOS/CentOS
+dnf install -y podman-docker
+
+# Ubuntu/Debian
+apt-get update && apt-get install -y docker.io
 ```
 
-## ⚙️ Configuration
+### 3. 安装 WireGuard
 
-### Configuration Hierarchy
+```bash
+dnf install -y wireguard-tools
+```
 
-Full Self Coding uses a hierarchical configuration system with the following precedence (highest to lowest):
+### 4. 克隆并配置项目
 
-1. **Environment Variables** (`FSC_*`)
-2. **Project-level Configuration** (`.fsc/config.json`)
-3. **User Configuration** (`~/.config/full-self-coding/config.json`)
-4. **Default Values**
+```bash
+git clone https://github.com/2233admin/fsc-deploy.git
+cd fsc-deploy
+```
 
-### Configuration Options
+### 5. 配置内网
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `agentType` | `SWEAgentType` | `CLAUDE_CODE` | AI agent to use (`claude-code`, `gemini-cli`) |
-| `maxDockerContainers` | `number` | `10` | Maximum Docker containers allowed |
-| `maxParallelDockerContainers` | `number` | `3` | Maximum parallel container execution |
-| `dockerTimeoutSeconds` | `number` | `600` | Docker command timeout in seconds |
-| `dockerMemoryMB` | `number` | `1024` | Docker container memory limit in MB |
-| `dockerCpuCores` | `number` | `2` | Docker container CPU core limit |
-| `dockerImageRef` | `string` | `"node:latest"` | Docker image reference for containers |
-| `maxTasks` | `number` | `100` | Maximum tasks to generate during analysis |
-| `minTasks` | `number` | `1` | Minimum tasks to generate during analysis |
-| `workStyle` | `WorkStyle` | `DEFAULT` | Work style (`default`, `bold_genius`, `careful`, etc.) |
-| `customizedWorkStyle` | `string` | - | Custom work style description |
-| `codingStyleLevel` | `number` | `5` | Coding style level (0-10) |
-| `customizedCodingStyle` | `string` | - | Custom coding style description |
-| `anthropicAPIKey` | `string` | - | Anthropic API key |
-| `anthropicAPIBaseUrl` | `string` | - | Custom Anthropic API base URL |
-| `anthropicAPIKeyExportNeeded` | `boolean` | `true` | Whether to export Anthropic API key |
-| `googleGeminiApiKey` | `string` | - | Google Gemini API key |
-| `googleGeminiAPIKeyExportNeeded` | `boolean` | `true` | Whether to export Gemini API key |
-| `openAICodexApiKey` | `string` | - | OpenAI Codex API key |
-| `openAICodexAPIKeyExportNeeded` | `boolean` | `true` | Whether to export OpenAI API key |
+生成密钥对：
+```bash
+wg genkey | tee private.key | wg pubkey > public.key
+```
 
-### Configuration Files
+创建配置文件 `/etc/wireguard/wg0.conf`：
 
-#### Global Configuration (`~/.config/full-self-coding/config.json`)
+```ini
+[Interface]
+PrivateKey = <你的PrivateKey>
+Address = <NODE1_IP>/24
+ListenPort = 51820
+
+[Peer]
+PublicKey = <对端PublicKey>
+Endpoint = <对端IP>:51820
+AllowedIPs = <NODE_IP>/32
+PersistentKeepalive = 25
+```
+
+启动：
+```bash
+wg-quick up wg0
+systemctl enable wg-quick@wg0
+```
+
+## ⚙️ 配置
+
+### 配置层级
+
+本系统使用分层配置，优先级从高到低：
+
+1. **环境变量** (`FSC_*`)
+2. **项目级配置** (`.fsc/config.json`)
+3. **用户级配置** (`~/.config/full-self-coding/config.json`)
+4. **默认值**
+
+### 配置选项
+
+| 字段 | 类型 | 默认值 | 描述 |
+|------|------|--------|------|
+| `agentType` | `string` | `claude-code` | 使用的AI Agent |
+| `maxDockerContainers` | `number` | `10` | 最大容器数 |
+| `maxParallelDockerContainers` | `number` | `3` | 最大并行数 |
+| `dockerTimeoutSeconds` | `number` | `600` | Docker超时(秒) |
+| `dockerMemoryMB` | `number` | `1024` | 容器内存限制(MB) |
+| `dockerCpuCores` | `number` | `2` | 容器CPU核心数 |
+| `maxTasks` | `number` | `100` | 最大任务数 |
+| `codingStyleLevel` | `number` | `5` | 代码风格级别(0-10) |
+
+### 任务路由配置
 
 ```json
 {
-  "agentType": "claude-code",
-  "anthropicAPIKey": "sk-ant-api03-...",
-  "maxDockerContainers": 8,
-  "maxParallelDockerContainers": 4,
-  "dockerTimeoutSeconds": 600,
-  "dockerMemoryMB": 2048,
-  "workStyle": "bold_genius",
-  "customizedWorkStyle": "Focus on rapid prototyping and innovation"
+  "routing": {
+    "code-fix": "<NODE2_IP>",
+    "bug-fix": "<NODE2_IP>",
+    "analysis": "<NODE3_IP>",
+    "refactor": "<NODE2_IP>",
+    "optimize": "<NODE3_IP>",
+    "review": "<NODE1_IP>"
+  }
 }
 ```
 
-#### Project Configuration (`.fsc/config.json`)
+## 📖 使用方法
 
-```json
-{
-  "agentType": "gemini-cli",
-  "googleGeminiApiKey": "AIzaSy...",
-  "maxTasks": 50,
-  "minTasks": 5,
-  "codingStyleLevel": 8,
-  "customizedCodingStyle": "Follow enterprise coding standards with comprehensive documentation"
-}
-```
-
-#### Environment Variables
+### 本地执行 (中央节点)
 
 ```bash
-# API Keys
-export FSC_ANTHROPIC_API_KEY="sk-ant-api03-..."
-export FSC_GOOGLE_GEMINI_API_KEY="AIzaSy..."
-export FSC_OPENAI_CODEX_API_KEY="sk-..."
-
-# Docker Settings
-export FSC_MAX_DOCKER_CONTAINERS=15
-export FSC_DOCKER_TIMEOUT_SECONDS=900
-export FSC_DOCKER_MEMORY_MB=4096
-
-# Agent Configuration
-export FSC_AGENT_TYPE="claude-code"
-export FSC_WORK_STYLE="bold_genius"
-export FSC_CODING_STYLE_LEVEL=9
+python3 fsc_wrapper.py \
+  --target /path/to/project \
+  --task-type code-fix \
+  --parallel 5
 ```
 
-## 📖 Usage Guide
-
-### Command Line Interface
-
-The CLI provides various options for configuration and execution:
+### 远程执行 (跨节点)
 
 ```bash
-full-self-coding-cli run [options]
+# 硅谷节点执行
+ssh root@<NODE2_IP> "cd /path/to/fsc && python3 fsc_wrapper.py --task-type code-fix"
+
+# 东京节点执行
+ssh root@<NODE3_IP> "cd /path/to/fsc && python3 fsc_wrapper.py --task-type analysis"
 ```
 
-#### Options
+### 可用参数
 
-| Option | Short | Type | Description |
-|--------|-------|------|-------------|
-| `--agent-type` | `-a` | `string` | AI agent type (`claude-code`, `gemini-cli`) |
-| `--config` | `-c` | `string` | Path to configuration file |
-| `--help` | `-h` | - | Show help information |
-| `--version` | `-V` | - | Show version information |
+| 参数 | 简写 | 说明 |
+|------|------|------|
+| `--target` | `-t` | 目标代码路径 |
+| `--agent` | `-a` | Agent类型 (claude-code/gemini-cli) |
+| `--parallel` | `-p` | 并行数 |
+| `--task-type` | `-k` | 任务类型 |
+| `--check` | - | 检查依赖 |
+| `--status` | - | 查看状态 |
+| `--cleanup` | - | 清理Session |
 
-### Examples
-
-#### Basic Repository Analysis
-
-```bash
-# Analyze current repository with default settings
-full-self-coding-cli run
-
-# Analyze with custom config
-full-self-coding-cli run --config ./my-config.json
-```
-
-#### Core Library Usage
-
-```typescript
-import { analyzeCodebase, TaskSolverManager, createConfig } from '@full-self-coding/core';
-
-// Create configuration
-const config = createConfig({
-  agentType: 'claude-code',
-  anthropicAPIKey: 'your-api-key'
-});
-
-// Analyze repository
-const tasks = await analyzeCodebase(config, 'https://github.com/user/repo.git');
-
-// Execute tasks
-const taskSolver = new TaskSolverManager(config, 'https://github.com/user/repo.git');
-for (const task of tasks) {
-  taskSolver.addTask(task);
-}
-await taskSolver.start();
-```
-
-## 🔧 API Reference
-
-### Core Classes
-
-#### ConfigReader
-
-Manages configuration loading, validation, and merging.
-
-```typescript
-import { ConfigReader, readConfigWithEnv } from '@full-self-coding/core';
-
-// Read configuration with environment variable support
-const config = readConfigWithEnv();
-
-// Create custom configuration
-import { createConfig } from '@full-self-coding/core';
-const customConfig = createConfig({
-  agentType: 'claude-code',
-  anthropicAPIKey: 'your-api-key'
-});
-```
-
-**Methods**
-
-- `readConfigWithEnv(): Config` - Read config with environment variables
-- `createConfig(userConfig: Partial<Config>): Config` - Create configuration from user config
-- `getGitRemoteUrls(useSSH?: boolean): Promise<{fetchUrl: string, pushUrl: string}>` - Get git remote URLs
-
-#### DockerInstance
-
-Manages Docker container lifecycle and operations.
-
-```typescript
-import { DockerInstance, DockerRunStatus } from '@full-self-coding/core';
-
-const docker = new DockerInstance();
-
-// Start container
-const containerName = await docker.startContainer('node:latest', 'my-task');
-
-// Run commands
-const result = await docker.runCommands(['npm', 'install']);
-
-// Copy files
-await docker.copyFileToContainer('local.txt', '/app/remote.txt');
-await docker.copyFilesToContainer('./src', '/app/src');
-
-// Copy files from container
-const content = await docker.copyFileFromContainer('/app/output.txt');
-
-// Shutdown
-await docker.shutdownContainer();
-```
-
-**Methods**
-
-- `startContainer(imageRef: string, taskName?: string): Promise<string>` - Start new container
-- `runCommands(commands: string[], timeout?: number): Promise<DockerRunResult>` - Execute commands
-- `copyFileToContainer(localPath: string, containerPath: string): Promise<void>` - Copy single file
-- `copyFilesToContainer(localPath: string, containerPath: string): Promise<void>` - Copy recursively
-- `copyFileFromContainer(containerPath: string): Promise<string>` - Copy file from container
-- `shutdownContainer(): Promise<void>` - Stop and remove container
-
-#### TaskSolver
-
-Executes individual tasks within Docker containers.
-
-```typescript
-import { TaskSolver, SWEAgentType } from '@full-self-coding/core';
-
-const taskSolver = new TaskSolver(
-  config,
-  task,
-  SWEAgentType.CLAUDE_CODE,
-  'https://github.com/user/repo.git'
-);
-
-// Solve the task
-await taskSolver.solve();
-
-// Get results
-const result = taskSolver.getResult();
-```
-
-**Methods**
-
-- `solve(shutdown?: boolean): Promise<void>` - Execute the task
-- `getResult(): TaskResult` - Get task execution result
-
-#### Analyzer
-
-Analyzes codebases and generates task lists.
-
-```typescript
-import { analyzeCodebase } from '@full-self-coding/core';
-
-// Analyze a repository
-const tasks = await analyzeCodebase(
-  config,
-  'https://github.com/user/repo.git'
-);
-```
-
-### Configuration Types
-
-```typescript
-interface Config {
-  agentType: SWEAgentType;
-  maxDockerContainers: number;
-  maxParallelDockerContainers: number;
-  dockerTimeoutSeconds: number;
-  dockerMemoryMB: number;
-  dockerCpuCores: number;
-  dockerImageRef: string;
-  maxTasks: number;
-  minTasks: number;
-  workStyle: WorkStyle;
-  customizedWorkStyle?: string;
-  codingStyleLevel: number;
-  customizedCodingStyle?: string;
-  anthropicAPIKey?: string;
-  anthropicAPIBaseUrl?: string;
-  anthropicAPIKeyExportNeeded: boolean;
-  googleGeminiApiKey?: string;
-  googleGeminiAPIKeyExportNeeded: boolean;
-  openAICodexApiKey?: string;
-  openAICodexAPIKeyExportNeeded: boolean;
-}
-
-enum SWEAgentType {
-  CLAUDE_CODE = 'claude-code',
-  GEMINI_CLI = 'gemini-cli',
-  CODEX = 'codex'
-}
-
-enum WorkStyle {
-  DEFAULT = 'default',
-  BOLDGENIUS = 'bold_genius',
-  CAREFUL = 'careful',
-  AGILE = 'agile',
-  RESEARCH = 'research'
-}
-```
-
-## 🧪 Testing
-
-### Running Tests
-
-```bash
-# Run all tests from project root
-bun run test
-
-# Or run from core package
-cd packages/core
-bun test
-
-# Run with timeout
-bun test --timeout 30000
-```
-
-### Test Structure
+## 📁 目录结构
 
 ```
-packages/core/test/
-├── dockerInstance.test.ts           # Docker functionality tests
-├── configReaderSupplementary.test.ts # Configuration system tests
-├── taskSolverClaudeCode.test.ts     # Claude Code task solver tests
-├── taskSolverGemini.test.ts         # Gemini task solver tests
-└── integration/                     # Integration tests
-    ├── full-workflow.test.ts        # End-to-end workflow tests
-    └── multi-agent.test.ts          # Multi-agent integration tests
+fsc-deploy/
+├── README.md           # 本文档
+├── LICENSE            # GPL v2 许可证
+├── .gitignore        # Git忽略配置
+├── fsc_wrapper.py    # 核心执行脚本
+└── install.sh        # 一键安装脚本
 ```
 
-### Writing Tests
+## ⚠️ 注意事项
 
-```typescript
-import { expect, test, describe, beforeAll, afterAll } from 'bun:test';
-import { DockerInstance } from '@full-self-coding/core';
+1. **安全**: 妥善保管 PrivateKey，不要提交到 Git
+2. **成本**: 监控 API 调用，避免超额
+3. **资源**: 限制并发数，防止服务器过载
+4. **备份**: 每次执行前自动 commit
 
-describe('DockerInstance', () => {
-  let docker: DockerInstance;
-  let containerName: string;
+## 📚 参考资料
 
-  beforeAll(async () => {
-    docker = new DockerInstance();
-    containerName = await docker.startContainer('node:latest', 'test-container');
-  });
+- [Full Self Coding 官方文档](https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding)
+- [OpenClaw 文档](https://docs.openclaw.ai)
+- [WireGuard 快速入门](https://www.wireguard.com/quickstart/)
+- [Bun 官方文档](https://bun.sh)
+- [Docker 官方文档](https://docs.docker.com)
 
-  afterAll(async () => {
-    await docker.shutdownContainer();
-  });
+## 📄 许可证
 
-  test('should run simple commands', async () => {
-    const result = await docker.runCommands(['echo', 'hello']);
-    expect(result.status).toBe(DockerRunStatus.SUCCESS);
-    expect(result.output).toContain('hello');
-  });
-});
-```
-
-## 🐳 Docker Integration
-
-### Container Management
-
-FSC creates isolated Docker containers for each task execution, ensuring:
-
-- **Security**: Complete isolation from host system
-- **Consistency**: Reproducible execution environments
-- **Parallelism**: Multiple tasks can run simultaneously
-- **Resource Management**: Controlled CPU and memory usage
-
-### Supported Operations
-
-- File copying (both directions)
-- Command execution with timeout protection
-- Real-time output streaming
-- Resource monitoring
-- Graceful shutdown
-
-### Custom Docker Images
-
-You can use custom Docker images:
-
-```json
-{
-  "dockerImageRef": "custom/node:18-alpine",
-  "dockerMemoryMB": 1536,
-  "dockerCpuCores": 3
-}
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### Docker Connectivity
-
-```bash
-# Check Docker daemon
-docker --version
-docker info
-
-# Test container creation
-docker run --rm hello-world
-```
-
-#### Permission Issues
-
-```bash
-# Add user to docker group (Linux)
-sudo usermod -aG docker $USER
-newgrp docker
-```
-
-#### API Key Problems
-
-```bash
-# Verify API key format
-echo $FSC_ANTHROPIC_API_KEY | head -c 20
-
-# Test API connectivity
-curl -H "x-api-key: $FSC_ANTHROPIC_API_KEY" \
-     https://api.anthropic.com/v1/messages \
-     -d '{"model":"claude-3-sonnet-20240229","max_tokens":10,"messages":[{"role":"user","content":"Hi"}]}'
-```
-
-### Debug Mode
-
-Enable debug logging:
-
-```bash
-export DEBUG=fsc:*
-node dist/main.js --debug https://github.com/user/repo.git
-```
-
-### Performance Tuning
-
-#### Resource Optimization
-
-```json
-{
-  "maxParallelDockerContainers": 2,
-  "dockerTimeoutSeconds": 900,
-  "dockerMemoryMB": 2048
-}
-```
-
-#### Task Limiting
-
-```json
-{
-  "maxTasks": 50,
-  "minTasks": 5
-}
-```
-
-## 🤝 Contributing
-
-### Development Setup
-
-1. **Fork and clone**
-   ```bash
-   git clone https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding.git
-   cd full-self-coding
-   ```
-
-2. **Install development dependencies**
-   ```bash
-   bun install
-   ```
-
-### Code Style
-
-- **TypeScript**: Strict mode enabled
-- **Pure TypeScript**: No build step required
-- **Bun**: Fast JavaScript runtime
-
-```bash
-# Run tests
-bun run test
-
-# Run development server
-bun run dev
-
-# Start CLI
-bun run start
-```
-
-### Testing Requirements
-
-- **Coverage**: Minimum 90% coverage required
-- **Unit Tests**: All public methods must have tests
-- **Integration Tests**: Critical workflows must be tested
-
-```bash
-# Run tests
-bun run test
-
-# Run tests with timeout
-bun run test --timeout 30000
-```
-
-### Pull Request Process
-
-1. **Create feature branch**
-   ```bash
-   git checkout -b feature/new-feature
-   ```
-
-2. **Make changes and test**
-   ```bash
-   bun run test
-   ```
-
-3. **Commit and push**
-   ```bash
-   git commit -m "feat: add new feature"
-   git push origin feature/new-feature
-   ```
-
-4. **Create pull request**
-   - Include comprehensive description
-   - Reference related issues
-   - Include test results
-
-## 📚 Advanced Topics
-
-### Custom Agent Integration
-
-To add a new agent type:
-
-1. **Define enum value**
-   ```typescript
-   // src/config.ts
-   export enum SWEAgentType {
-     CLAUDE_CODE = 'claude-code',
-     GEMINI_CLI = 'gemini-cli',
-     CODEX = 'codex',
-     CUSTOM_AGENT = 'custom-agent'
-   }
-   ```
-
-2. **Implement agent commands**
-   ```typescript
-   // src/SWEAgent/customAgentCommands.ts
-   export function customAgentCommands(
-     config: Config,
-     task: Task,
-     gitUrl: string
-   ): string[] {
-     // Implementation
-   }
-   ```
-
-3. **Update command builder**
-   ```typescript
-   // src/SWEAgent/SWEAgentTaskSolverCommands.ts
-   switch (agentType) {
-     case SWEAgentType.CUSTOM_AGENT:
-       return customAgentCommands(config, task, gitUrl);
-   }
-   ```
-
-### Custom Work Styles
-
-Define custom work styles by extending the `WorkStyle` enum and implementing corresponding prompt generation logic.
-
-### Monitoring and Observability
-
-#### Metrics Collection
-
-FSC supports integration with monitoring systems:
-
-```typescript
-// Add custom metrics
-import { MetricsCollector } from './src/metrics';
-
-const metrics = new MetricsCollector();
-metrics.recordTaskExecution(task, duration, success);
-metrics.recordResourceUsage(containerId, cpu, memory);
-```
-
-#### Logging
-
-Configure logging levels and outputs:
-
-```typescript
-import { Logger } from './src/logger';
-
-const logger = new Logger({
-  level: 'debug',
-  output: 'file',
-  filename: 'fsc.log'
-});
-```
-
-### Security Considerations
-
-- **API Key Management**: Use environment variables or secure vault
-- **Container Isolation**: Containers run with limited privileges
-- **Network Access**: Control container network access
-- **File System**: Limit file system access within containers
-
-## 📄 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Anthropic** - For Claude Code integration
-- **Google** - For Gemini CLI integration
-- **Docker** - For containerization platform
-- **Bun** - For fast JavaScript runtime
-
-## 📞 Support
-
-- **GitHub Issues**: [Report bugs and request features](https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding/issues)
-- **Discussions**: [Community discussions and Q&A](https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding/discussions)
-- **Documentation**: [Full documentation site](https://full-self-coding.docs.com) (Coming Soon)
+本项目基于 **GPL v2** (Blender协议) 发布。
 
 ---
 
-**Built with ❤️ by the Full Self Coding team**
+*本方案整合了 Full Self Coding、OpenClaw 和 WireGuard 等开源项目。*
