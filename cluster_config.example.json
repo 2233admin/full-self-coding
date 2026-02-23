@@ -1,0 +1,20 @@
+[
+  {
+    "name": "node1",
+    "ip": "<NODE1_IP>",
+    "role": "coordinator",
+    "ssh_key": "~/.ssh/id_rsa"
+  },
+  {
+    "name": "node2", 
+    "ip": "<NODE2_IP>",
+    "role": "executor-claude",
+    "ssh_key": "~/.ssh/id_rsa"
+  },
+  {
+    "name": "node3",
+    "ip": "<NODE3_IP>",
+    "role": "executor-gemini",
+    "ssh_key": "~/.ssh/id_rsa"
+  }
+]
