@@ -37,8 +37,8 @@ Full Self Coding (FSC) is a sophisticated framework designed to automate softwar
 - ✅ **OpenClaw Gateway**: 统一任务调度中心
 - ✅ **Session隔离**: 任务间上下文隔离
 - ✅ **智能路由**: 根据任务类型自动选择节点
-- ✅ **WireGuard内网**: 同云同区域低延迟备用通道
-- ✅ **SSH隧道**: 主要跨服务器通信方式
+- ✅ **WireGuard内网**: 主要跨服务器通信方式 (10.10.0.x)
+- ✅ **SSH隧道**: 备用通道
 - ✅ **自动部署脚本**: 一键部署整个集群
 
 ### 自定义调度器 (类似渲染集群)
@@ -93,13 +93,13 @@ Full Self Coding (FSC) is a sophisticated framework designed to automate softwar
 ### 系统数据流
 
 ```
-用户请求 → Gateway → Session创建 → DAG解析 → 调度器选节点 → SSH下发 → Docker执行 → 结果汇总 → Session关闭
+用户请求 → Gateway → Session创建 → DAG解析 → 调度器选节点 → WireGuard下发 → Docker执行 → 结果汇总 → Session关闭
                               ↓
                        错误分类 → 重试/熔断
 
 通信方式 (实际部署):
-- 主要: SSH 隧道 (通过公网IP)
-- 备用: WireGuard 内网 (同云同区域低延迟)
+- 主要: WireGuard 内网 (10.10.0.x)
+- 备用: SSH 隧道 (公网)
 ```
 
 ### Supported Agent Types
