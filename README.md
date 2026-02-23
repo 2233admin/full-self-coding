@@ -62,29 +62,39 @@ Full Self Coding (FSC) is a sophisticated framework designed to automate softwar
 ### Core Components
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   ConfigReader  │    │   DockerInstance │    │   TaskSolver    │
-│                 │    │                  │    │                 │
-│ • Configuration │    │ • Container      │    │ • Task          │
-│   Management    │    │   Management     │    │   Execution     │
-│ • Validation    │    │ • File Operations│    │ • Result        │
-│ • Merging       │    │ • Command        │    │   Processing    │
-│ • Environment   │    │   Execution      │    │                 │
-│   Variables     │    │ • Monitoring     │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌──────────────────┐
-                    │     Analyzer     │
-                    │                  │
-                    │ • Codebase       │
-                    │   Analysis       │
-                    │ • Task           │
-                    │   Generation     │
-                    │ • Agent          │
-                    │   Coordination   │
-                    └──────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    OpenClaw Gateway                                  │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │  Session Mgr   │  │  Task Scheduler │  │  Error Handler │  │
+│  │                 │  │                 │  │                 │  │
+│  │ • Session隔离  │  │ • DAG依赖排序   │  │ • 错误分类     │  │
+│  │ • 上下文管理    │  │ • 节点选择      │  │ • 智能重试     │  │
+│  │ • Token流控    │  │ • 负载均衡      │  │ • 熔断降级     │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌─────────────────┴─────────────────┐
+                    │                                 │
+           ┌────────┴────────┐              ┌────────┴────────┐
+           │    Node 1       │              │    Node 2       │
+           │  (Coordinator)  │              │   (Executor)    │
+           │                  │              │                  │
+           │ ┌─────────────┐ │              │ ┌─────────────┐ │
+           │ │ DockerHost  │ │              │ │ DockerHost  │ │
+           │ │             │ │              │ │             │ │
+           │ │ • Container │ │              │ │ • Container │ │
+           │ │ • Analyzer  │ │              │ │ • TaskSolver│ │
+           │ │ • TaskMgr   │ │              │ │ • CodeFix   │ │
+           │ └─────────────┘ │              │ └─────────────┘ │
+           └─────────────────┘              └─────────────────┘
+```
+
+### 系统数据流
+
+```
+用户请求 → Gateway → Session创建 → DAG解析 → 调度器选节点 → SSH下发 → Docker执行 → 结果汇总 → Session关闭
+                           ↓
+                    错误分类 → 重试/熔断
 ```
 
 ### Supported Agent Types
