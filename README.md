@@ -1,6 +1,8 @@
 # Full Self Coding (FSC)
 
-> 🔗 **OpenClaw集成版本** - 本分支整合了 OpenClaw 实现多节点集群部署
+> 🔗 **OpenClaw集成版** - 本分支基于原版FSC，集成OpenClaw实现生产级多节点集群部署
+
+**原版**: https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding
 
 No prompts, no instructions, no plans, you have 100~1000 AI agent coding in parallel now, solving all possible problems and issues in your codebase.
 
@@ -17,6 +19,26 @@ Full Self Coding (FSC) is a sophisticated framework designed to automate softwar
 - **📊 Comprehensive Reporting**: Detailed execution reports with git diff tracking
 - **🔄 Parallel Processing**: Multi-container parallel task execution with resource management
 - **🛡️ Robust Error Handling**: Comprehensive error recovery and graceful degradation
+
+### OpenClaw集成版 vs 原版
+
+| 特性 | 原版 FSC | OpenClaw集成版 |
+|------|----------|----------------|
+| 部署方式 | 单机 | 多节点集群 |
+| 任务调度 | Docker本地 | OpenClaw Gateway |
+| Session管理 | 无 | 任务隔离Session |
+| 多节点路由 | 手动 | 自动Routing |
+| 内网互联 | 无 | WireGuard VPN |
+| 规模 | 单机并行 | 跨服务器并行 |
+
+### 本分支新增特性
+
+- ✅ **多节点集群部署**: 支持跨服务器部署
+- ✅ **OpenClaw Gateway**: 统一任务调度中心
+- ✅ **Session隔离**: 任务间上下文隔离
+- ✅ **智能路由**: 根据任务类型自动选择节点
+- ✅ **WireGuard内网**: 节点间安全通信
+- ✅ **自动部署脚本**: 一键部署整个集群
 
 ## 🏗️ Architecture
 
