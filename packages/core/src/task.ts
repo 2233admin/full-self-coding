@@ -27,6 +27,20 @@ export interface Task {
      * The ID of the task
      */
     ID: string;
+
+    // ============ 治理扩展字段 ============
+    /** 风险级别 (默认 low) */
+    riskLevel?: 'low' | 'medium' | 'high' | 'critical';
+    /** 预估 token 消耗 */
+    estimatedTokens?: number;
+    /** 依赖的前置任务 ID */
+    dependsOn?: string[];
+    /** 最低信誉要求 */
+    requiredTrustScore?: number;
+    /** 最大执行时间 (ms) */
+    maxExecutionTimeMs?: number;
+    /** 指定 Agent (空则自动匹配) */
+    assignedAgent?: string;
 }
 
 /**
