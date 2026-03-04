@@ -4,7 +4,7 @@
 export { default as analyzeCodebase } from './analyzer';
 export { TaskSolver } from './taskSolver';
 export { TaskSolverManager } from './taskSolverManager';
-export { CodeCommitter } from './codeCommitter';
+export { CodeCommitter, type QualityGateHook, type TrustUpdateHook } from './codeCommitter';
 export { DockerInstance } from './dockerInstance';
 
 // Configuration

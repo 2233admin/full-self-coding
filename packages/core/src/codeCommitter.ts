@@ -35,14 +35,49 @@ export interface GitStateOptions {
   backupBranch?: string;
 }
 
+/**
+ * 治理质量门钩子 — 可选注入，不注入则全部通过
+ * 返回 { allowed, score, decision, reason }
+ */
+export interface QualityGateHook {
+  evaluate(input: {
+    taskId: string;
+    agentId: string;
+    gitDiff: string;
+    touchedFiles: string[];
+    commitMessage: string;
+    riskLevel?: string;
+  }): Promise<{
+    allowed: boolean;
+    score: number;
+    decision: 'APPROVE' | 'REVIEW' | 'REJECT';
+    reason?: string;
+  }>;
+}
+
+/**
+ * 信誉更新钩子 — 可选注入
+ */
+export interface TrustUpdateHook {
+  onTaskResult(taskId: string, agentId: string, success: boolean, qualityScore: number): Promise<void>;
+}
+
 export class CodeCommitter {
   private taskResults: TaskResult[];
   private originalGitNode: string;
   private gitRepoPath: string;
   private gitStateOptions: GitStateOptions;
   private stashedChanges: boolean = false;
+  private qualityGate?: QualityGateHook;
+  private trustHook?: TrustUpdateHook;
+  private agentId: string;
 
-  constructor(taskResults: TaskResult[], gitRepoPath: string = '.', gitStateOptions: GitStateOptions = {}) {
+  constructor(
+    taskResults: TaskResult[],
+    gitRepoPath: string = '.',
+    gitStateOptions: GitStateOptions = {},
+    options?: { qualityGate?: QualityGateHook; trustHook?: TrustUpdateHook; agentId?: string },
+  ) {
     this.taskResults = taskResults;
     this.gitRepoPath = gitRepoPath;
     this.gitStateOptions = {
@@ -53,6 +88,9 @@ export class CodeCommitter {
       ...gitStateOptions
     };
     this.originalGitNode = this.getCurrentGitNode();
+    this.qualityGate = options?.qualityGate;
+    this.trustHook = options?.trustHook;
+    this.agentId = options?.agentId || 'unknown';
   }
 
   /**
@@ -451,6 +489,19 @@ ${backupBranch ? `Backup branch created: ${backupBranch}` : ''}`;
     }
   }
 
+  /** 从 git diff 中提取被修改的文件列表 */
+  private getTouchedFiles(gitDiff: string): string[] {
+    const files: string[] = [];
+    for (const line of gitDiff.split('\n')) {
+      const match = line.match(/^(?:diff --git a\/(.+?) b\/|[+-]{3} [ab]\/(.+))$/);
+      if (match) {
+        const f = match[1] || match[2];
+        if (f && !files.includes(f)) files.push(f);
+      }
+    }
+    return files;
+  }
+
   /**
    * Process a single task result: create branch, apply diff, commit, return to original node
    */
@@ -487,8 +538,40 @@ ${backupBranch ? `Backup branch created: ${backupBranch}` : ''}`;
       // Apply git diff
       await this.applyGitDiff(taskResult.gitDiff);
 
+      // ======== Quality Gate (治理质量门) ========
+      if (this.qualityGate) {
+        const touchedFiles = this.getTouchedFiles(taskResult.gitDiff);
+        const commitMsg = this.createCommitMessage(taskResult);
+        const gate = await this.qualityGate.evaluate({
+          taskId: taskResult.ID,
+          agentId: this.agentId,
+          gitDiff: taskResult.gitDiff,
+          touchedFiles,
+          commitMessage: commitMsg,
+          riskLevel: (taskResult as any).riskLevel,
+        });
+
+        if (!gate.allowed) {
+          // REJECT — 回滚 diff，不合并
+          console.log(`[QualityGate] REJECTED task ${taskResult.ID} (score=${gate.score}, reason=${gate.reason || gate.decision})`);
+          this.returnToOriginalNode();
+          if (this.trustHook) {
+            await this.trustHook.onTaskResult(taskResult.ID, this.agentId, false, gate.score);
+          }
+          result.error = `Quality gate rejected: ${gate.decision} (score=${gate.score})`;
+          return result;
+        }
+
+        console.log(`[QualityGate] ${gate.decision} task ${taskResult.ID} (score=${gate.score})`);
+      }
+
       // Commit changes
       this.commitChanges(taskResult);
+
+      // Trust update on success
+      if (this.trustHook) {
+        await this.trustHook.onTaskResult(taskResult.ID, this.agentId, true, 100);
+      }
 
       // Return to original node
       this.returnToOriginalNode();
