@@ -38,7 +38,10 @@ export class TaskSolver {
 
       const imageRef = this.config.dockerImageRef || "node:latest";
       console.log(`task solver is now solving task ${this.task.ID}`);
-      this.dockerContainerName = await this.dockerInstance.startContainer(imageRef, this.task.ID);
+      this.dockerContainerName = await this.dockerInstance.startContainer(imageRef, this.task.ID, {
+        memoryMB: this.config.dockerMemoryMB,
+        cpuCores: this.config.dockerCpuCores,
+      });
 
 
       // 0.4 copy all files related to git to the container

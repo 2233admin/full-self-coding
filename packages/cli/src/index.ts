@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import {
   analyzeCodebase,
   TaskSolverManager,
+  DistributedScheduler,
   createConfig,
   type Config,
   readConfigWithEnv,
@@ -73,14 +74,27 @@ export async function runFullAnalysis(): Promise<void> {
   // Step 1: analyze the codebase and get tasks
   const tasks: Task[] = await analyzeCodebase(config, gitRemoteUrl);
 
-  // Step 2: execute tasks based on analysis
-  const taskSolverManager = new TaskSolverManager(config, gitRemoteUrl);
-  for (const task of tasks) {
-    taskSolverManager.addTask(task);
-  }
-  await taskSolverManager.start();
+  // Step 2: execute tasks — distributed (Redis Streams) or local
+  let allTaskReports;
+  const useDistributed = process.argv.includes('--distributed') || process.env.FSC_DISTRIBUTED === '1';
 
-  const allTaskReports = taskSolverManager.getReports();
+  if (useDistributed) {
+    console.log('[FSC] Distributed mode — submitting tasks to Redis Streams');
+    const scheduler = new DistributedScheduler();
+    await scheduler.connect();
+    try {
+      allTaskReports = await scheduler.submitAndWait(tasks);
+    } finally {
+      await scheduler.disconnect();
+    }
+  } else {
+    const taskSolverManager = new TaskSolverManager(config, gitRemoteUrl);
+    for (const task of tasks) {
+      taskSolverManager.addTask(task);
+    }
+    await taskSolverManager.start();
+    allTaskReports = taskSolverManager.getReports();
+  }
 
   // Step 3: do code commit
   const codeCommitter = new CodeCommitter(allTaskReports);
@@ -89,8 +103,11 @@ export async function runFullAnalysis(): Promise<void> {
   // Step 4: save the final report
   const yymmddhhmmss = getYYMMDDHHMMSS();
 
-  // Save final report to ~/Library/Logs/full-self-coding directory
-  const logDir = process.env.HOME + "/Library/Logs/full-self-coding";
+  // Save final report — cross-platform log directory
+  const home = process.env.HOME || process.env.USERPROFILE || '/tmp';
+  const logDir = process.platform === 'darwin'
+    ? `${home}/Library/Logs/full-self-coding`
+    : `${home}/.local/share/full-self-coding/logs`;
 
   // Create the directory if it doesn't exist
   if (!fs.existsSync(logDir)) {

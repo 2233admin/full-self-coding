@@ -4,7 +4,6 @@ function streamToTextSync(stream: Uint8Array | null | undefined): string {
 	return new TextDecoder().decode(stream);
 }
 import { spawnSync, spawn } from "bun";
-import { time } from "console";
 
 /**
  * Status of Docker command execution
@@ -37,14 +36,18 @@ export class DockerInstance {
      * @param image The Docker image to use.
      * @returns The name of the started container.
      */
-    async startContainer(image: string, dockerContainerName?: string): Promise<string> {
+    async startContainer(image: string, dockerContainerName?: string, options?: { memoryMB?: number; cpuCores?: number }): Promise<string> {
         this.containerName = dockerContainerName || `copilot-docker-${Math.random().toString(36).slice(2, 10)}`;
 
         // wait for 0.5 seconds to make sure the container is started
         await new Promise(resolve => setTimeout(resolve, 500));
-        const startResult = spawnSync([
-            "docker", "run", "-d", "--name", this.containerName, image, "sleep", "infinity"
-        ]);
+
+        const args = ["docker", "run", "-d", "--name", this.containerName];
+        if (options?.memoryMB) args.push("--memory", `${options.memoryMB}m`);
+        if (options?.cpuCores) args.push("--cpus", `${options.cpuCores}`);
+        args.push(image, "sleep", "infinity");
+
+        const startResult = spawnSync(args);
 
         console.log(`Starting container ${this.containerName} with image ${image}`);
         if (startResult.exitCode !== 0) {

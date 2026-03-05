@@ -6,6 +6,7 @@ export { TaskSolver } from './taskSolver';
 export { TaskSolverManager } from './taskSolverManager';
 export { CodeCommitter, type QualityGateHook, type TrustUpdateHook } from './codeCommitter';
 export { DockerInstance } from './dockerInstance';
+export { DistributedScheduler, type DistributedSchedulerOptions } from './distributedScheduler';
 
 // Configuration
 export { createConfig, type Config } from './config';
