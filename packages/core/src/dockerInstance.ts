@@ -4,15 +4,13 @@ function streamToTextSync(stream: Uint8Array | null | undefined): string {
 	return new TextDecoder().decode(stream);
 }
 import { spawnSync, spawn } from "bun";
+import { TaskExecutor, RunStatus, type RunResult } from "./taskExecutor";
 
 /**
  * Status of Docker command execution
+ * @deprecated Use RunStatus from taskExecutor.ts instead
  */
-export enum DockerRunStatus {
-	SUCCESS = 'success',
-	FAILURE = 'failure',
-	TIMEOUT = 'timeout'
-}
+export const DockerRunStatus = RunStatus;
 
 export interface DockerRunOptions {
 	image: string; // Docker image tag or ID
@@ -20,7 +18,7 @@ export interface DockerRunOptions {
 	timeoutSeconds?: number; // Max seconds to allow for all commands
 }
 
-export class DockerInstance {
+export class DockerInstance extends TaskExecutor {
     private containerName: string | null = null;
 
 		/**
@@ -70,7 +68,7 @@ export class DockerInstance {
     ): Promise<{
         output: string;
         success: boolean;
-        status: DockerRunStatus;
+        status: RunStatus;
         error?: string;
     }> {
 
@@ -136,7 +134,7 @@ export class DockerInstance {
         timeoutSeconds?: number): Promise<{
         output: string;
         success: boolean;
-        status: DockerRunStatus;
+        status: RunStatus;
         error?: string;
     }> {
 

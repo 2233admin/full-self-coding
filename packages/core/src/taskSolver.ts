@@ -1,7 +1,7 @@
 import type { Config, SWEAgentType } from "./config";
 import type { Task, TaskResult } from "./task";
 import { TaskStatus } from "./task";
-import { DockerInstance, DockerRunStatus } from "./dockerInstance";
+import { type TaskExecutor, RunStatus, createTaskExecutor } from "./taskExecutor";
 import { taskSolverCommands } from "./SWEAgent/SWEAgentTaskSolverCommands";
 import { trimJSONSingleObject } from "./utils/trimJSON";
 import { taskSolverPrompt } from "./prompts/taskSolverPrompt";
@@ -11,8 +11,8 @@ export class TaskSolver {
     private taskResult: TaskResult;
     private agentType: SWEAgentType;
     private gitURL: string;
-    private dockerInstance: DockerInstance;
-    private dockerContainerName: string;
+    private executor: TaskExecutor;
+    private containerName: string;
 
     constructor(config: Config, task: Task, agentType: SWEAgentType, gitURL: string) {
         this.config = config;
@@ -25,8 +25,8 @@ export class TaskSolver {
         };
         this.agentType = agentType;
         this.gitURL = gitURL;
-        this.dockerInstance = new DockerInstance();
-        this.dockerContainerName = "";
+        this.executor = createTaskExecutor(config.executionMode || 'docker');
+        this.containerName = "";
 
         this.agentType = this.config.agentType;
     }
@@ -38,7 +38,7 @@ export class TaskSolver {
 
       const imageRef = this.config.dockerImageRef || "node:latest";
       console.log(`task solver is now solving task ${this.task.ID}`);
-      this.dockerContainerName = await this.dockerInstance.startContainer(imageRef, this.task.ID, {
+      this.containerName = await this.executor.startContainer(imageRef, this.task.ID, {
         memoryMB: this.config.dockerMemoryMB,
         cpuCores: this.config.dockerCpuCores,
       });
@@ -50,13 +50,13 @@ export class TaskSolver {
       const path = await import('path');
 
       // 0.4.1 create ~/.ssh folder in the container
-      await this.dockerInstance.runCommands(['mkdir', '-p', '/root/.ssh']);
+      await this.executor.runCommands(['mkdir', '-p', '/root/.ssh']);
 
       // 0.4.2 copy all files in ~/.ssh to ~/.ssh (/root/.ssh) in the container
       const sshPath = path.join(os.homedir(), '.ssh');
       if (fs.existsSync(sshPath)) {
           console.log(`Copying SSH files from ${sshPath} to container...`);
-          await this.dockerInstance.copyFilesToContainer(sshPath, '/root/.ssh');
+          await this.executor.copyFilesToContainer(sshPath, '/root/.ssh');
       } else {
           console.warn(`SSH directory not found at ${sshPath}, skipping SSH file copy`);
       }
@@ -67,23 +67,23 @@ export class TaskSolver {
           console.log(`Reading git config from ${gitConfigPath}...`);
           const dotGitConfigFileText = await fs.promises.readFile(gitConfigPath, 'utf8');
           // 0.4.4 copy ~/.gitconfig to ~/.gitconfig (/root/.gitconfig) in the container
-          await this.dockerInstance.copyFileToContainer(dotGitConfigFileText, '/root/.gitconfig');
+          await this.executor.copyFileToContainer(dotGitConfigFileText, '/root/.gitconfig');
       } else {
           console.warn(`Git config file not found at ${gitConfigPath}, skipping git config copy`);
       }
 
       // 0.4.4 remove the ~/.ssh/config from the docker container if it exists
-      await this.dockerInstance.runCommands(['rm -f /root/.ssh/config']);
+      await this.executor.runCommands(['rm -f /root/.ssh/config']);
 
 
       // first get the task prompt and save/copy to the docker container
       const taskPrompt = taskSolverPrompt(this.task, this.config);
       
       // save the task prompt to the docker container
-      await this.dockerInstance.runCommands([
+      await this.executor.runCommands([
         "mkdir -p /app"
       ], this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
-      await this.dockerInstance.copyFileToContainer(taskPrompt, "/app/taskSolverPrompt.txt");
+      await this.executor.copyFileToContainer(taskPrompt, "/app/taskSolverPrompt.txt");
 
       // get the command
       const commandArray = taskSolverCommands(this.agentType, this.config, this.task, this.gitURL);
@@ -93,11 +93,11 @@ export class TaskSolver {
       const lastCommand = commandArray.pop();
 
       // run the first N-1 commands
-      // const dockerResult = await this.dockerInstance.runCommands(commandArray, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+      // const dockerResult = await this.executor.runCommands(commandArray, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
 
       for (const eachCommand of commandArray) {
-        const dockerResult = await this.dockerInstance.runCommandAsync(eachCommand, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
-        if (dockerResult.status !== DockerRunStatus.SUCCESS) {
+        const dockerResult = await this.executor.runCommandAsync(eachCommand, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+        if (dockerResult.status !== RunStatus.SUCCESS) {
           console.error(`Docker run failed with status ${dockerResult.status}`);
           throw new Error(`Docker run failed with status ${dockerResult.status}`);
         }
@@ -107,21 +107,21 @@ export class TaskSolver {
 
       // run the last command asynchronously
       if (lastCommand) {
-        console.log(`Starting solving the task ${this.task.ID} with last command: ${lastCommand} at ${this.dockerContainerName}`);
-        finalOutputOfTaskSolverCommand = await this.dockerInstance.runCommandAsync(lastCommand, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+        console.log(`Starting solving the task ${this.task.ID} with last command: ${lastCommand} at ${this.containerName}`);
+        finalOutputOfTaskSolverCommand = await this.executor.runCommandAsync(lastCommand, this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
       }
       else {
         throw new Error("Last command for running task solver is undefined.");
       }
 
       // parse the output of the last command
-      if (finalOutputOfTaskSolverCommand.status !== DockerRunStatus.SUCCESS) {
+      if (finalOutputOfTaskSolverCommand.status !== RunStatus.SUCCESS) {
         console.error(`Docker run task solver command failed with status ${finalOutputOfTaskSolverCommand.status}`);
         throw new Error(`Docker run task solver command failed with status ${finalOutputOfTaskSolverCommand.status}`);
       }
 
       // // parse the output
-      // if (dockerResult.status !== DockerRunStatus.SUCCESS) {
+      // if (dockerResult.status !== RunStatus.SUCCESS) {
       //   console.error(`Docker run failed with status ${dockerResult.status}`);
       //   throw new Error(`Docker run failed with status ${dockerResult.status}`);
       // }
@@ -132,9 +132,9 @@ export class TaskSolver {
       // read the generated final report from /app/finalReport.json
       const readFinalReportCommand = `node /app/diff/run.js && cat /app/finalReport.json`;
 
-      const finalReportResult = await this.dockerInstance.runCommands([readFinalReportCommand], this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
+      const finalReportResult = await this.executor.runCommands([readFinalReportCommand], this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
 
-      if (finalReportResult.status !== DockerRunStatus.SUCCESS) {
+      if (finalReportResult.status !== RunStatus.SUCCESS) {
         console.error(`Docker run failed with status ${finalReportResult.status}`);
       }
       
@@ -171,13 +171,13 @@ export class TaskSolver {
          */
         if (status === "success") {
           console.log("Start to read git diff from container...");
-          const gitDiffResult = await this.dockerInstance.copyFileFromContainer("/app/git_diff.txt");
+          const gitDiffResult = await this.executor.copyFileFromContainer("/app/git_diff.txt");
           this.taskResult.gitDiff = gitDiffResult;
           console.log("Git diff read successfully.");
         }
 
         // the last step, output "done" to "/app/done.txt"
-        await this.dockerInstance.runCommands([
+        await this.executor.runCommands([
           "echo \"done\" > /app/done.txt"
         ], this.config.dockerTimeoutSeconds? this.config.dockerTimeoutSeconds : 0);
       } catch (error) {
@@ -186,7 +186,7 @@ export class TaskSolver {
       }
       finally {
         if (shutdown) {
-          await this.dockerInstance.shutdownContainer();
+          await this.executor.shutdownContainer();
         }
       }
     }

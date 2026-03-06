@@ -1,4 +1,5 @@
 import {WorkStyle} from './workStyle';
+import type { ExecutionMode } from './taskExecutor';
 
 /**
  * Available types of Software Engineering agents
@@ -142,6 +143,12 @@ export interface Config {
     customizedMessage?: string;
 
     /**
+     * Execution mode: 'docker' (container isolation) or 'bare' (git clone + Bun.spawn)
+     * @default 'docker'
+     */
+    executionMode?: ExecutionMode;
+
+    /**
      * use Github ssh instead of https.
      * If you want to access to your private repositories, 
      * you must set this to true, and have set up ssh keys for Github.
@@ -166,6 +173,7 @@ export interface Config {
 export const DEFAULT_CONFIG: Config = {
     agentType: SWEAgentType.CLAUDE_CODE,
     maxDockerContainers: 10,
+    executionMode: 'docker',
     dockerImageRef: 'node:latest',
     maxParallelDockerContainers: 10,
     dockerTimeoutSeconds: 300000,
