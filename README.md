@@ -110,6 +110,88 @@ Full Self Coding (FSC) is a sophisticated framework designed to automate softwar
 | **GEMINI_CLI** | Google Gemini CLI integration | `node:latest` | Google's AI model integration, fast response |
 | **CODEX** | OpenAI Codex integration (planned) | - | OpenAI GPT-based code completion |
 
+### Execution Modes
+
+FSC supports two execution modes — choose based on your environment:
+
+| Mode | Isolation | Overhead | Best For |
+|------|-----------|----------|----------|
+| **Docker** | Full container isolation | ~200MB/agent | Production, untrusted code |
+| **bare** (WorktreeExecutor) | Git worktree | ~0 | Development, testing, resource-constrained servers |
+
+Configure via `.fsc/config.json`:
+```json
+{
+  "executionMode": "bare"
+}
+```
+
+### Agent Daemon
+
+The Agent Daemon is a long-running process that replaces the old per-task worker model. It manages a pool of agents, handles heartbeats, and exposes a local HTTP API.
+
+```
+Agent Daemon (port 18791)
+├── Agent Pool (pre-warmed agents, auto-scaling)
+├── Heartbeat + Resource Reporting
+├── Bubblewrap Sandbox (lightweight alternative to Docker)
+└── HTTP API (health, status, task submission)
+```
+
+**Environment Variables**:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AGENT_ID` | auto | Unique agent identifier |
+| `MAX_AGENTS` | `10` | Maximum agents in pool |
+| `MIN_AGENTS` | `2` | Minimum pre-warmed agents |
+| `REDIS_URL` | `redis://10.10.0.1:6379` | Redis connection for distributed scheduling |
+| `WORKSPACE` | `.` | Working directory |
+| `SANDBOX` | `bubblewrap` | Sandbox backend (`bubblewrap` or `docker`) |
+| `API_PORT` | `18791` | Local management API port |
+
+### Agent Pool
+
+Agents are expensive to create and destroy. The Agent Pool pre-warms N agents and reuses them across tasks — similar to how CUDA Streaming Multiprocessors reuse warps.
+
+- **Auto-scaling**: Scales between `MIN_AGENTS` and `MAX_AGENTS` based on queue depth
+- **Health checks**: 30s interval, auto-recycles unhealthy agents
+- **Expiry**: Idle agents are reclaimed after configurable TTL
+
+### Distributed Scheduler (Redis Streams)
+
+For multi-node deployments, the `DistributedScheduler` uses Redis Streams for reliable task distribution:
+
+```
+Task Submit → Redis Stream (fsc:tasks) → Consumer Group → Node pulls → Execute → ACK
+```
+
+- Supports multiple consumer groups (one per node)
+- At-least-once delivery with automatic retry on failure
+- JSON task payloads with priority ordering
+
+### Quality Gate & Trust Hooks
+
+The `CodeCommitter` integrates governance hooks for automated quality control:
+
+- **QualityGateHook**: Evaluates commits before merge → `APPROVE` / `REVIEW` / `REJECT`
+- **TrustUpdateHook**: Updates agent trust score after task completion (feeds back into scheduling priority)
+
+```typescript
+const committer = new CodeCommitter({
+  qualityGate: async (diff) => ({ decision: 'APPROVE', score: 0.95 }),
+  trustUpdate: async (agentId, result) => { /* update trust factor */ }
+});
+```
+
+### Cluster Health Check
+
+Built-in health monitoring for multi-node deployments:
+- Node connectivity (WireGuard + SSH fallback)
+- Redis reachability
+- Agent pool utilization per node
+- Automatic alerting on node failures
+
 ## 🚀 Getting Started
 
 ### Prerequisites
