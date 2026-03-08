@@ -41,6 +41,8 @@ export interface Task {
     maxExecutionTimeMs?: number;
     /** 指定 Agent (空则自动匹配) */
     assignedAgent?: string;
+    /** 首选 Agent 后端类型 (由 modelRouter 或分析器设置) */
+    preferredAgent?: string;
 }
 
 /**

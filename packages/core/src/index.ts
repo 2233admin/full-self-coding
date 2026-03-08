@@ -35,3 +35,6 @@ export * from './SWEAgent/codexCommands';
 export * from './SWEAgent/cursorCommands';
 export * from './SWEAgent/geminiCodeCommands';
 export * from './SWEAgent/SWEAgentTaskSolverCommands';
+
+// Model Router (multi-model task routing)
+export * from './modelRouter';

@@ -1,6 +1,7 @@
 import { TaskStatus, type Task, type TaskResult } from './task';
 import { TaskSolver } from './taskSolver';
 import type { Config } from './config';
+import { routeTask } from './modelRouter';
 
 /**
  * FSC TaskSolverManager v2.0 — 治理感知调度器
@@ -80,7 +81,12 @@ export class TaskSolverManager {
     }
 
     private async startTask(task: Task) {
-        const taskSolver = new TaskSolver(this.config, task, this.config.agentType, this.gitURL);
+        // 多模型路由：按任务特征选择最优 Agent
+        const route = routeTask(task, this.config);
+        const agentType = route.primary;
+        console.log(`[Router] Task ${task.ID}: ${route.reason}`);
+
+        const taskSolver = new TaskSolver(this.config, task, agentType, this.gitURL);
         this.activeTasks.set(task.ID, { solver: taskSolver, startedAt: Date.now(), task });
 
         try {
