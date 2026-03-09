@@ -24,18 +24,30 @@ export interface DistributedSchedulerOptions {
   consumerGroup?: string;
   /** 提交后等待结果的最大时间 (ms) */
   resultTimeoutMs?: number;
+  /** Git 仓库 URL (worker 节点会 clone) */
+  gitUrl?: string;
+  /** Git 分支 */
+  branch?: string;
+  /** Agent 类型: claude / gemini / codex / bash */
+  agentType?: string;
 }
 
 export class DistributedScheduler {
   private redisUrl: string;
   private consumerGroup: string;
   private resultTimeoutMs: number;
+  private gitUrl: string;
+  private branch: string;
+  private agentType: string;
   private redis: any = null;
 
   constructor(options: DistributedSchedulerOptions = {}) {
     this.redisUrl = options.redisUrl || process.env.FSC_REDIS_URL || DEFAULT_REDIS_URL;
     this.consumerGroup = options.consumerGroup || process.env.FSC_CONSUMER_GROUP || 'fsc-workers';
-    this.resultTimeoutMs = options.resultTimeoutMs || 600_000; // 10 minutes
+    this.resultTimeoutMs = options.resultTimeoutMs || 600_000;
+    this.gitUrl = options.gitUrl || '';
+    this.branch = options.branch || '';
+    this.agentType = options.agentType || 'bash';
   }
 
   async connect(): Promise<void> {
@@ -43,15 +55,7 @@ export class DistributedScheduler {
     this.redis = createClient({ url: this.redisUrl });
     this.redis.on('error', (err: Error) => console.error('[DistScheduler] Redis:', err.message));
     await this.redis.connect();
-
-    // Ensure consumer group exists
-    try {
-      await this.redis.xGroupCreate(TASK_STREAM, this.consumerGroup, '0', { MKSTREAM: true });
-    } catch (e: any) {
-      if (!e.message?.includes('BUSYGROUP')) throw e;
-    }
-
-    console.log(`[DistScheduler] Connected to ${this.redisUrl}`);
+    console.log(`[DistScheduler] Connected to ${this.redisUrl} (git=${this.gitUrl}, agent=${this.agentType})`);
   }
 
   async disconnect(): Promise<void> {
@@ -61,21 +65,27 @@ export class DistributedScheduler {
     }
   }
 
-  /** 提交任务到 Redis Stream */
+  /** 提交任务到 Redis Stream (JSON task 字段格式，兼容 daemon parseTask) */
   async submitTask(task: Task): Promise<string> {
     if (!this.redis) throw new Error('Not connected');
 
-    const id = await this.redis.xAdd(TASK_STREAM, '*', {
-      task_id: task.ID,
+    // 使用 JSON task 字段格式 — daemon parseTask() 直接解析
+    const payload = {
+      id: task.ID,
       title: task.title,
       description: task.description,
+      gitUrl: this.gitUrl,
+      branch: this.branch,
+      agentType: this.agentType,
+      timeoutSeconds: Math.ceil((task.maxExecutionTimeMs || 300_000) / 1000),
+    };
+
+    const id = await this.redis.xAdd(TASK_STREAM, '*', {
+      task: JSON.stringify(payload),
+      // 扁平字段备份 (供监控/查询)
+      task_id: task.ID,
       priority: String(task.priority),
       risk_level: task.riskLevel || 'low',
-      estimated_tokens: String(task.estimatedTokens || 2000),
-      required_trust_score: String(task.requiredTrustScore || 0),
-      depends_on: JSON.stringify(task.dependsOn || []),
-      max_execution_time_ms: String(task.maxExecutionTimeMs || 300_000),
-      assigned_agent: task.assignedAgent || '',
       submitted_at: String(Date.now()),
     });
 
@@ -123,10 +133,14 @@ export class DistributedScheduler {
               description: message.description || '',
               priority: parseInt(message.priority || '1'),
               status: message.status === 'success' ? TaskStatus.SUCCESS : TaskStatus.FAILURE,
-              report: message.result_preview || message.report || '',
-              completedAt: parseInt(message.completed_at || String(Date.now())),
+              report: message.output || message.report || '',
+              completedAt: parseInt(message.timestamp || String(Date.now())),
               gitDiff: message.git_diff || undefined,
             });
+            console.log(
+              `[DistScheduler] Result: ${taskId} = ${message.status}` +
+              ` (node=${message.node_id}, ${message.duration_ms}ms)`
+            );
           }
         }
       }

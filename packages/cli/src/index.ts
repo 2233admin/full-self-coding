@@ -80,7 +80,16 @@ export async function runFullAnalysis(): Promise<void> {
 
   if (useDistributed) {
     console.log('[FSC] Distributed mode — submitting tasks to Redis Streams');
-    const scheduler = new DistributedScheduler();
+    const agentTypeMap: Record<string, string> = {
+      'claude-code': 'claude',
+      'gemini-cli': 'gemini',
+      'codex': 'codex',
+      'cursor': 'bash',
+    };
+    const scheduler = new DistributedScheduler({
+      gitUrl: gitRemoteUrl,
+      agentType: agentTypeMap[config.agentType] || 'bash',
+    });
     await scheduler.connect();
     try {
       allTaskReports = await scheduler.submitAndWait(tasks);

@@ -179,8 +179,9 @@ dist
 
 test/apiKeySetup.ts
 
-./.fsc
-./.claude
-.claude/
 .fsc/
+.claude/
+.omc/
 ./core/test/apiKeySetup.ts
+.gitnexus
+AGENTS.md
