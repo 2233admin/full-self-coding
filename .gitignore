@@ -185,3 +185,4 @@ test/apiKeySetup.ts
 ./core/test/apiKeySetup.ts
 .gitnexus
 AGENTS.md
+providers.json
