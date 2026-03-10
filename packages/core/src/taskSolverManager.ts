@@ -2,6 +2,7 @@ import { TaskStatus, type Task, type TaskResult } from './task';
 import { TaskSolver } from './taskSolver';
 import type { Config } from './config';
 import { routeTask } from './modelRouter';
+import { CodeRAG } from './codeRAG';
 
 /**
  * FSC TaskSolverManager v2.0 — 治理感知调度器
@@ -32,11 +33,13 @@ export class TaskSolverManager {
     private config: Config;
     private gitURL: string;
     private slaTimer: ReturnType<typeof setInterval> | null = null;
+    private codeRAG: CodeRAG | null = null;
 
     constructor(config: Config, gitURL: string) {
         this.config = config;
         this.gitURL = gitURL;
         this.maxParallelDockerContainers = config.maxParallelDockerContainers || 1;
+        this.codeRAG = null;
     }
 
     /** 添加任务（按优先级插入） */
@@ -86,7 +89,9 @@ export class TaskSolverManager {
         const agentType = route.primary;
         console.log(`[Router] Task ${task.ID}: ${route.reason}`);
 
-        const taskSolver = new TaskSolver(this.config, task, agentType, this.gitURL);
+        // CodeRAG: inject reference context per task
+        const refContext = this.codeRAG ? this.codeRAG.getReferenceContext(task.title, task.description) : "";
+        const taskSolver = new TaskSolver(this.config, task, agentType, this.gitURL, refContext);
         this.activeTasks.set(task.ID, { solver: taskSolver, startedAt: Date.now(), task });
 
         try {
@@ -184,6 +189,7 @@ export class TaskSolverManager {
     }
 
     /** 获取队列长度 */
+/** Enable CodeRAG: search GitHub for reference repos, clone and index them */    async enableCodeRAG(searchQuery: string, githubToken?: string): Promise<number> {        this.codeRAG = new CodeRAG({ githubToken });        return this.codeRAG.prepare(searchQuery);    }    /** Get the CodeRAG instance (if enabled) */    getCodeRAG(): CodeRAG | null {        return this.codeRAG;    }
     getQueueLength(): number {
         return this.taskQueue.length;
     }

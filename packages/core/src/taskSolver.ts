@@ -14,7 +14,9 @@ export class TaskSolver {
     private executor: TaskExecutor;
     private containerName: string;
 
-    constructor(config: Config, task: Task, agentType: SWEAgentType, gitURL: string) {
+    private referenceContext: string;
+
+    constructor(config: Config, task: Task, agentType: SWEAgentType, gitURL: string, referenceContext?: string) {
         this.config = config;
         this.task = task;
         this.taskResult = {
@@ -25,6 +27,7 @@ export class TaskSolver {
         };
         this.agentType = agentType;
         this.gitURL = gitURL;
+        this.referenceContext = referenceContext || "";
         this.executor = createTaskExecutor(config.executionMode || 'docker');
         this.containerName = "";
     }
@@ -75,7 +78,7 @@ export class TaskSolver {
 
 
       // first get the task prompt and save/copy to the docker container
-      const taskPrompt = taskSolverPrompt(this.task, this.config);
+      const taskPrompt = taskSolverPrompt(this.task, this.config, this.referenceContext);
       
       // save the task prompt to the docker container
       await this.executor.runCommands([

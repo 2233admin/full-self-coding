@@ -2,7 +2,7 @@ import type {Config} from '../config';
 import type {Task} from '../task';
 import { getCodingStyle } from '../codingStyle';
 
-export function taskSolverPrompt(task: Task, config: Config): string {
+export function taskSolverPrompt(task: Task, config: Config, referenceContext?: string): string {
     // return test_string;
     return `
 The path of the source code is located at /app/repo.
@@ -46,5 +46,7 @@ Task title: ${task.title}
 
 Task description: ${task.description}
 
-Task ID: ${task.ID}`;  
+Task ID: ${task.ID}
+
+${referenceContext ? referenceContext : ""}`;
 }

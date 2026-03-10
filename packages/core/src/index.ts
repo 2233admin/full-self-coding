@@ -38,3 +38,5 @@ export * from './SWEAgent/SWEAgentTaskSolverCommands';
 
 // Model Router (multi-model task routing)
 export * from './modelRouter';
+// CodeRAG (Reference-Augmented Generation)
+export { CodeRAG, type CodeRAGConfig, type RAGQueryResult, type RepoIndex, type FileReference } from './codeRAG';
