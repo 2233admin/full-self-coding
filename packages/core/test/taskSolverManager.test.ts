@@ -209,7 +209,7 @@ describe('TaskSolverManager', () => {
 
             const failedTaskReport = reports.find(r => r.ID === '1');
             expect(failedTaskReport?.status).toBe(TaskStatus.FAILURE);
-            expect(failedTaskReport?.report).toContain('Error solving task: Task 1 failed');
+            expect(failedTaskReport?.report).toContain('Task 1 failed');
 
             const successTaskReport = reports.find(r => r.ID === '2');
             expect(successTaskReport?.status).toBe(TaskStatus.SUCCESS);

@@ -1,12 +1,22 @@
 import { expect, test, describe, beforeAll, afterAll, jest } from 'bun:test';
+import { spawnSync } from "bun";
 import { DockerInstance, DockerRunStatus } from "../src/dockerInstance";
+
+const dockerAvailable = (() => {
+  try {
+    const r = spawnSync({ cmd: ["docker", "info"], timeout: 5000 });
+    return r.exitCode === 0;
+  } catch { return false; }
+})();
+
+const describeDocker = dockerAvailable ? describe : describe.skip;
 
 // Mock console methods to avoid noise in tests
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
-describe('DockerInstance runCommandAsync', () => {
+describeDocker('DockerInstance runCommandAsync', () => {
     let docker: DockerInstance;
     let containerName: string;
 
@@ -216,7 +226,7 @@ describe('DockerInstance runCommandAsync', () => {
     });
 });
 
-describe('DockerInstance runCommandAsync Edge Cases', () => {
+describeDocker('DockerInstance runCommandAsync Edge Cases', () => {
     test('should handle null input gracefully', async () => {
         const docker = new DockerInstance();
         await docker.startContainer('node:latest', 'test-edge-cases');

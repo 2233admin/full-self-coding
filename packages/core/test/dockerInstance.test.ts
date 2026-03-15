@@ -1,8 +1,17 @@
-import { expect, test } from "bun:test";
-import { spawnSync } from "bun"; // Added this line
+import { expect, test, describe } from "bun:test";
+import { spawnSync } from "bun";
 import { DockerInstance, DockerRunStatus } from "../src/dockerInstance";
 
-test("DockerInstance runs echo and captures output using separate functions", async () => {
+const dockerAvailable = (() => {
+  try {
+    const r = spawnSync({ cmd: ["docker", "info"], timeout: 5000 });
+    return r.exitCode === 0;
+  } catch { return false; }
+})();
+
+const testDocker = test.skipIf(!dockerAvailable);
+
+testDocker("DockerInstance runs echo and captures output using separate functions", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     const commands = ["echo HelloDocker"];
@@ -25,7 +34,7 @@ test("DockerInstance runs echo and captures output using separate functions", as
 });
 
 
-test("DockerInstance creates and runs hello world Node.js script using separate functions", async () => {
+testDocker("DockerInstance creates and runs hello world Node.js script using separate functions", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     const commands = [
@@ -50,7 +59,7 @@ test("DockerInstance creates and runs hello world Node.js script using separate 
     }
 });
 
-// test("DockerInstance handles timeout correctly using separate functions", async () => {
+// testDocker("DockerInstance handles timeout correctly using separate functions", async () => {
 //     const instance = new DockerInstance();
 //     const image = "node:20-alpine";
 //     const commands = ["sleep 10"]; // Command that will definitely take longer than the timeout
@@ -72,7 +81,7 @@ test("DockerInstance creates and runs hello world Node.js script using separate 
 //     }
 // });
 
-test("DockerInstance handles command failure correctly using separate functions", async () => {
+testDocker("DockerInstance handles command failure correctly using separate functions", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     const commands = ["nonexistentcommand"]; // Command that doesn't exist
@@ -90,7 +99,7 @@ test("DockerInstance handles command failure correctly using separate functions"
     }
 });
 
-test("DockerInstance shuts down container correctly", async () => {
+testDocker("DockerInstance shuts down container correctly", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     let containerName: string | undefined;
@@ -110,7 +119,7 @@ test("DockerInstance shuts down container correctly", async () => {
     }
 });
 
-test("DockerInstance creates and runs hello world Node.js script in node:latest:latest using separate functions", async () => {
+testDocker("DockerInstance creates and runs hello world Node.js script in node:latest:latest using separate functions", async () => {
     const instance = new DockerInstance();
     const image = "node:latest";
     const commands = [
@@ -139,7 +148,7 @@ test("DockerInstance creates and runs hello world Node.js script in node:latest:
 
 
 
-test("DockerInstance runs hello world on node:latest", async () => {
+testDocker("DockerInstance runs hello world on node:latest", async () => {
     const instance = new DockerInstance();
     const image = "node:latest";
     const commands = [
@@ -165,7 +174,7 @@ test("DockerInstance runs hello world on node:latest", async () => {
     }
 }, 300000);
 
-test("DockerInstance runs multiple commands in sequence", async () => {
+testDocker("DockerInstance runs multiple commands in sequence", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     let containerName: string | undefined;
@@ -194,7 +203,7 @@ test("DockerInstance runs multiple commands in sequence", async () => {
 }, 3000000);
 
         
-        test("DockerInstance copies file from container", async () => {
+        testDocker("DockerInstance copies file from container", async () => {
             const instance = new DockerInstance();
             const image = "node:20-alpine";
             const commands = [`echo "Hello from container file" > /tmp/testfile.txt`];
@@ -212,7 +221,7 @@ test("DockerInstance runs multiple commands in sequence", async () => {
             }
         });
 
-test("DockerInstance copies file to container", async () => {
+testDocker("DockerInstance copies file to container", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     const fileContent = "console.log('Hello from copied file!');";
@@ -238,7 +247,7 @@ test("DockerInstance copies file to container", async () => {
     }
 });
 
-test("DockerInstance copies file to container with nested directory", async () => {
+testDocker("DockerInstance copies file to container with nested directory", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     const fileContent = '{"name": "test-app", "version": "1.0.0"}';
@@ -265,7 +274,7 @@ test("DockerInstance copies file to container with nested directory", async () =
     }
 });
 
-test("DockerInstance handles copyFileToContainer with null container name", async () => {
+testDocker("DockerInstance handles copyFileToContainer with null container name", async () => {
     const instance = new DockerInstance();
     const fileContent = "test content";
     const containerFilePath = "/tmp/test.txt";
@@ -274,7 +283,7 @@ test("DockerInstance handles copyFileToContainer with null container name", asyn
     await expect(instance.copyFileToContainer(fileContent, containerFilePath)).rejects.toThrow("Container name is null, cannot copy file");
 });
 
-test("DockerInstance copies multiple files and folders to container", async () => {
+testDocker("DockerInstance copies multiple files and folders to container", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
 
@@ -357,7 +366,7 @@ test("DockerInstance copies multiple files and folders to container", async () =
     }
 }, 120000);
 
-test("DockerInstance handles copyFilesToContainer with null container name", async () => {
+testDocker("DockerInstance handles copyFilesToContainer with null container name", async () => {
     const instance = new DockerInstance();
     const testDir = "/tmp";
 
@@ -365,7 +374,7 @@ test("DockerInstance handles copyFilesToContainer with null container name", asy
     await expect(instance.copyFilesToContainer(testDir, "/tmp")).rejects.toThrow("Container name is null, cannot copy files");
 });
 
-test("DockerInstance handles copyFilesToContainer with non-existent path", async () => {
+testDocker("DockerInstance handles copyFilesToContainer with non-existent path", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
     const nonExistentPath = "/tmp/non-existent-path-" + Math.random().toString(36).slice(2, 10);
@@ -384,7 +393,7 @@ test("DockerInstance handles copyFilesToContainer with non-existent path", async
     }
 });
 
-test("DockerInstance copies single file using copyFilesToContainer", async () => {
+testDocker("DockerInstance copies single file using copyFilesToContainer", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
 

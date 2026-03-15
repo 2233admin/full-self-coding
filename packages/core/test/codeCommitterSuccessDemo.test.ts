@@ -53,7 +53,7 @@ new file mode 100644
 index 0000000..8a2b3c4
 --- /dev/null
 +++ b/src/components/UserProfile.jsx
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,18 @@
 +import React, { useState } from 'react';
 +
 +const UserProfile = ({ user }) => {
@@ -78,7 +78,8 @@ index 0000000..4b825dc
 --- /dev/null
 +++ b/public/uploads/README.md
 @@ -0,0 +1 @@
-+# Upload directory for user profile images`
++# Upload directory for user profile images
+`
             },
             {
                 ID: 'SUCCESS-002',

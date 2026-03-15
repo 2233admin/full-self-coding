@@ -1,8 +1,17 @@
-import { expect, test } from "bun:test";
+import { expect, test, describe } from "bun:test";
 import { spawnSync } from "bun";
 import { DockerInstance } from "../src/dockerInstance";
 
-test("DockerInstance copyFilesToContainer basic functionality", async () => {
+const dockerAvailable = (() => {
+  try {
+    const r = spawnSync({ cmd: ["docker", "info"], timeout: 5000 });
+    return r.exitCode === 0;
+  } catch { return false; }
+})();
+
+const testDocker = test.skipIf(!dockerAvailable);
+
+testDocker("DockerInstance copyFilesToContainer basic functionality", async () => {
     const instance = new DockerInstance();
     const image = "node:20-alpine";
 

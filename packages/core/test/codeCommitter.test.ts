@@ -52,7 +52,8 @@ index 0000000..1234567
 +    console.log('Hello from new feature!');
 +}
 +
-+export default newFeature;`
++export default newFeature;
+`
             },
             {
                 ID: 'task-2',
@@ -66,13 +67,14 @@ index 0000000..1234567
 index 1234567..abcdefg 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,3 +1,6 @@
+@@ -1,1 +1,5 @@
  # Test Repository
-
++
 +This repository has been updated with new features.
 +
 +## Usage
-+Run the application to see the new features.`
++Run the application to see the new features.
+`
             },
             {
                 ID: 'task-3',
@@ -265,10 +267,11 @@ index 1234567..abcdefg 100644
             await committer.commitAllChanges();
 
             // Check out the branch and verify the file was created
-            const branchName = `task-${sampleTaskResults[0].ID}-`;
-            execSync(`git checkout $(git branch --list "${branchName}*" | sed 's/^[* ] //')`, {
-                cwd: tempRepoDir
-            });
+            const branchPrefix = `task-${sampleTaskResults[0].ID}-`;
+            const branchList = execSync('git branch', { cwd: tempRepoDir, encoding: 'utf8' });
+            const matched = branchList.split('\n').map(b => b.trim().replace(/^\* /, '')).find(b => b.startsWith(branchPrefix));
+            if (!matched) throw new Error('Branch not found');
+            execSync(`git checkout ${matched}`, { cwd: tempRepoDir });
 
             const newFeaturePath = path.join(tempRepoDir, 'new-feature.js');
             expect(fs.existsSync(newFeaturePath)).toBe(true);
