@@ -40,7 +40,7 @@ function streamToText(stream: Uint8Array | null | undefined): string {
 	return new TextDecoder().decode(stream);
 }
 
-export class WorktreeExecutor extends TaskExecutor {
+export class BareWorkspaceExecutor extends TaskExecutor {
 	private worktreePath: string | null = null;
 	private taskId: string | null = null;
 	private static ROOT = "/workspace";
@@ -51,7 +51,7 @@ export class WorktreeExecutor extends TaskExecutor {
 		_options?: { memoryMB?: number; cpuCores?: number }
 	): Promise<string> {
 		this.taskId = name || `bare-${Math.random().toString(36).slice(2, 10)}`;
-		this.worktreePath = `${WorktreeExecutor.ROOT}/${this.taskId}`;
+		this.worktreePath = `${BareWorkspaceExecutor.ROOT}/${this.taskId}`;
 		spawnSync(["mkdir", "-p", this.worktreePath]);
 		console.log(`[bare] Created workspace ${this.worktreePath}`);
 		return this.taskId;
@@ -198,7 +198,7 @@ export type ExecutionMode = "docker" | "bare";
 
 export function createTaskExecutor(mode: ExecutionMode): TaskExecutor {
 	if (mode === "bare") {
-		return new WorktreeExecutor();
+		return new BareWorkspaceExecutor();
 	}
 	// Docker mode: 动态导入原 DockerInstance 并包装为 TaskExecutor
 	// 为了保持向后兼容，DockerInstance 本身已经实现了所有方法

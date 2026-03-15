@@ -89,8 +89,13 @@ export interface TaskResult extends Task {
     completedAt?: number;
 
     /**
-     * 
+     *
      * The git diff of the changes made by this task
      */
     gitDiff?: string;
+
+    /** Commit hash produced by worktree execution (for cherry-pick) */
+    commitHash?: string;
+    /** Worktree branch name (for debugging/tracing) */
+    worktreeBranch?: string;
 }

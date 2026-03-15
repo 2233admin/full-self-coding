@@ -3,6 +3,7 @@ import { TaskSolver } from './taskSolver';
 import type { Config } from './config';
 import { routeTask } from './modelRouter';
 import { CodeRAG } from './codeRAG';
+import { LocalExecution, WorktreeManager, ConcurrencyPool, toWorkUnit, toTaskResult } from './execution';
 
 /**
  * FSC TaskSolverManager v2.0 — 治理感知调度器
@@ -61,6 +62,12 @@ export class TaskSolverManager {
     }
 
     async start() {
+        // Worktree mode: bypass Docker/bare scheduler
+        if ((this.config as any).executionMode === 'worktree') {
+            await this.startWorktreeMode();
+            return;
+        }
+
         // 启动 SLA 超时监控
         this.slaTimer = setInterval(() => this.checkSLA(), 10_000);
 
@@ -177,6 +184,47 @@ export class TaskSolverManager {
         if (/permission denied|EACCES|EPERM/i.test(msg)) return 'PERMANENT';
         if (/lint|test.*fail|type.*error|compilation/i.test(msg)) return 'QUALITY';
         return 'UNKNOWN';
+    }
+
+    private async startWorktreeMode(): Promise<void> {
+        const cfg = this.config as any;
+        const repoPath = cfg.repoPath || '.';
+        const worktreeManager = new WorktreeManager();
+        const execution = new LocalExecution(worktreeManager);
+        const pool = new ConcurrencyPool(cfg.maxParallelWorktrees ?? 5);
+
+        // Preflight: git + agent CLIs
+        const agentCommands = [cfg.agentType || 'claude'];
+        const errors = worktreeManager.preflight(repoPath, agentCommands);
+        if (errors.length > 0) {
+            for (const err of errors) {
+                console.warn(`[WorktreeMode] Preflight warning: ${err}`);
+            }
+        }
+
+        const tasks = [...this.taskQueue];
+        this.taskQueue = [];
+
+        const settled = await Promise.allSettled(
+            tasks.map(task =>
+                pool.run(async () => {
+                    const unit = toWorkUnit(task, this.config, repoPath);
+                    const er = await execution.execute(unit);
+                    return { task, er };
+                })
+            )
+        );
+
+        for (const s of settled) {
+            if (s.status === 'fulfilled') {
+                const { task, er } = s.value;
+                this.completedTasks.push(toTaskResult(er, task));
+            } else {
+                // execution threw — create a failure result for the task
+                // We can't match back easily without task ref; log and skip
+                console.error('[WorktreeMode] Execution error:', s.reason);
+            }
+        }
     }
 
     getReports() {

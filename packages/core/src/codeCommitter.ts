@@ -5,6 +5,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { gitExec } from './execution/gitExec';
 
 // ANSI color codes for beautiful terminal output
 const COLORS = {
@@ -503,6 +504,72 @@ ${backupBranch ? `Backup branch created: ${backupBranch}` : ''}`;
   }
 
   /**
+   * Safety checks before cherry-pick: working tree clean, not detached HEAD, commit exists, not already picked
+   */
+  private preCherryPickChecks(commitHash: string): { ok: boolean; error?: string } {
+    // 1. Working tree must be clean
+    const status = gitExec(['status', '--porcelain'], this.gitRepoPath);
+    if (status.stdout.trim()) {
+      return { ok: false, error: 'Working tree is not clean. Stash or commit changes before cherry-pick.' };
+    }
+
+    // 2. Must not be on detached HEAD
+    const head = gitExec(['symbolic-ref', '--quiet', 'HEAD'], this.gitRepoPath);
+    if (head.exitCode !== 0) {
+      return { ok: false, error: 'Repository is in detached HEAD state. Checkout a branch before cherry-pick.' };
+    }
+
+    // 3. Commit must exist
+    const verify = gitExec(['cat-file', '-e', commitHash], this.gitRepoPath);
+    if (verify.exitCode !== 0) {
+      return { ok: false, error: `Commit ${commitHash} does not exist in this repository.` };
+    }
+
+    // 4. Not already picked (commit already reachable from HEAD)
+    const merge = gitExec(['merge-base', '--is-ancestor', commitHash, 'HEAD'], this.gitRepoPath);
+    if (merge.exitCode === 0) {
+      return { ok: false, error: `Commit ${commitHash} is already in HEAD history (already cherry-picked).` };
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * Run git cherry-pick, abort on failure
+   */
+  private cherryPick(commitHash: string): { ok: boolean; error?: string } {
+    const result = gitExec(['cherry-pick', commitHash], this.gitRepoPath);
+    if (result.exitCode !== 0) {
+      // Abort to clean up
+      gitExec(['cherry-pick', '--abort'], this.gitRepoPath);
+      return { ok: false, error: result.stderr.trim() || `cherry-pick failed (exit ${result.exitCode})` };
+    }
+    return { ok: true };
+  }
+
+  /**
+   * Return copy-paste repair commands for conflict resolution
+   */
+  private conflictGuide(taskResult: TaskResult): string {
+    const hash = taskResult.commitHash || '<commit-hash>';
+    const branch = taskResult.worktreeBranch || '<worktree-branch>';
+    return [
+      `# Cherry-pick conflict repair guide for task ${taskResult.ID}`,
+      `# Option 1: resolve conflicts manually`,
+      `git cherry-pick ${hash}`,
+      `# ... resolve conflicts in editor ...`,
+      `git add -A && git cherry-pick --continue`,
+      ``,
+      `# Option 2: inspect the worktree branch`,
+      `git log --oneline ${branch}`,
+      `git diff HEAD ${hash}`,
+      ``,
+      `# Option 3: abort and skip`,
+      `git cherry-pick --abort`,
+    ].join('\n');
+  }
+
+  /**
    * Process a single task result: create branch, apply diff, commit, return to original node
    */
   private async processTaskResult(taskResult: TaskResult): Promise<{ success: boolean; branchName: string; error?: string }> {
@@ -515,6 +582,25 @@ ${backupBranch ? `Backup branch created: ${backupBranch}` : ''}`;
     try {
       // Validate task result
       this.validateTaskResult(taskResult);
+
+      // Cherry-pick path: if commitHash present, use it instead of gitDiff
+      if (taskResult.commitHash) {
+        const checks = this.preCherryPickChecks(taskResult.commitHash);
+        if (!checks.ok) {
+          result.error = checks.error;
+          return result;
+        }
+        const pick = this.cherryPick(taskResult.commitHash);
+        if (!pick.ok) {
+          const guide = this.conflictGuide(taskResult);
+          console.error(`[CodeCommitter] Cherry-pick conflict for task ${taskResult.ID}:\n${guide}`);
+          result.error = `cherry-pick failed: ${pick.error}`;
+          return result;
+        }
+        result.success = true;
+        console.log(`Successfully cherry-picked ${taskResult.commitHash} for task ${taskResult.ID}`);
+        return result;
+      }
 
       // Skip if no git diff to apply
       if (!taskResult.gitDiff || taskResult.gitDiff.trim() === '') {

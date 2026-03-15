@@ -142,15 +142,86 @@ export function createCLI(): Command {
     .command('run')
     .description('Run the full self-coding analysis and task execution')
     .option('-c, --config <path>', 'Path to configuration file')
+    .option('--mode <mode>', 'Execution mode (docker|bare|worktree)', 'bare')
     .action(async (options) => {
       try {
         // If config option is provided, add it to process.argv for the main function to pick up
         if (options.config) {
           process.argv.push('--config', options.config);
         }
+        if (options.mode) {
+          process.env.FSC_EXECUTION_MODE = options.mode;
+        }
         await runFullAnalysis();
       } catch (error) {
         console.error('Error running full analysis:', error);
+        process.exit(1);
+      }
+    });
+
+  program
+    .command('collect')
+    .description('Collect results from existing FSC worktrees')
+    .option('--interactive', 'Show diffs and confirm merges')
+    .action(async (options) => {
+      try {
+        const { WorktreeManager, WorktreeCollector } = await import('@full-self-coding/core');
+        const manager = new WorktreeManager();
+        const collector = new WorktreeCollector(manager);
+
+        let tasks: import('@full-self-coding/core').Task[] = [];
+        try {
+          const raw = await Bun.file('.fsc/tasks.json').text();
+          tasks = JSON.parse(raw);
+        } catch {
+          console.warn('Warning: could not load .fsc/tasks.json, proceeding with empty task list');
+        }
+
+        const results = options.interactive
+          ? collector.collectInteractive('.', tasks)
+          : collector.collectAll('.', tasks);
+
+        console.log(JSON.stringify(results, null, 2));
+      } catch (error) {
+        console.error('Error collecting results:', error);
+        process.exit(1);
+      }
+    });
+
+  program
+    .command('cleanup')
+    .description('Remove all FSC worktrees and branches')
+    .action(async () => {
+      try {
+        const { WorktreeManager } = await import('@full-self-coding/core');
+        const manager = new WorktreeManager();
+        manager.cleanup('.');
+        console.log('All FSC worktrees and branches removed successfully.');
+      } catch (error) {
+        console.error('Error during cleanup:', error);
+        process.exit(1);
+      }
+    });
+
+  program
+    .command('preflight')
+    .description('Check prerequisites for worktree execution')
+    .action(async () => {
+      try {
+        const { WorktreeManager } = await import('@full-self-coding/core');
+        const manager = new WorktreeManager();
+        const errors = manager.preflight('.', ['claude']);
+        if (errors.length === 0) {
+          console.log('Preflight checks passed. All prerequisites satisfied.');
+        } else {
+          console.error('Preflight checks failed:');
+          for (const err of errors) {
+            console.error(`  - ${err}`);
+          }
+          process.exit(1);
+        }
+      } catch (error) {
+        console.error('Error during preflight:', error);
         process.exit(1);
       }
     });

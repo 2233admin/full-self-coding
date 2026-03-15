@@ -6,7 +6,7 @@ export { TaskSolver } from './taskSolver';
 export { TaskSolverManager } from './taskSolverManager';
 export { CodeCommitter, type QualityGateHook, type TrustUpdateHook } from './codeCommitter';
 export { DockerInstance } from './dockerInstance';
-export { TaskExecutor, WorktreeExecutor, createTaskExecutor, RunStatus, type RunResult, type ExecutionMode } from './taskExecutor';
+export { TaskExecutor, BareWorkspaceExecutor, createTaskExecutor, RunStatus, type RunResult, type ExecutionMode } from './taskExecutor';
 export { DistributedScheduler, type DistributedSchedulerOptions } from './distributedScheduler';
 
 // Configuration
@@ -40,3 +40,6 @@ export * from './SWEAgent/SWEAgentTaskSolverCommands';
 export * from './modelRouter';
 // CodeRAG (Reference-Augmented Generation)
 export { CodeRAG, type CodeRAGConfig, type RAGQueryResult, type RepoIndex, type FileReference } from './codeRAG';
+
+// Worktree Execution (v3)
+export * from './execution';
