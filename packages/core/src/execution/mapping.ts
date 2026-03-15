@@ -1,10 +1,10 @@
 // packages/core/src/execution/mapping.ts
 import type { Task, TaskResult } from "../task";
 import { TaskStatus } from "../task";
-import type { ExecutionResult, WorkUnit, AgentConfig } from "./types";
-import { AGENT_BUILDERS } from "./types";
+import type { ExecutionResult, WorkUnit, AgentConfig, AgentType, CostTier } from "./types";
+import { AGENT_BUILDERS, AGENT_CATALOG } from "./types";
 import type { Config } from "../config";
-import { routeTask } from "../modelRouter";
+import { routeTask, routeTaskByTier, type CostTierStrategy } from "../modelRouter";
 import { gitExec } from "./gitExec";
 
 export function toTaskResult(er: ExecutionResult, originalTask: Task): TaskResult {
@@ -68,11 +68,58 @@ function getCurrentBranch(repoPath: string): string {
 }
 
 function getAgentConfig(type: AgentConfig["type"], config: Config): AgentConfig {
-  const command = type === "custom" ? (config as any).customAgentCommand : type;
-  const buildArgs = AGENT_BUILDERS[type as keyof typeof AGENT_BUILDERS]
-    ?? AGENT_BUILDERS.claude;
+  const catalog = AGENT_CATALOG[type as string] ?? AGENT_CATALOG.opencode;
+  const command = type === "custom"
+    ? (config as any).customAgentCommand
+    : catalog.command;
+  const buildArgs = AGENT_BUILDERS[type as string] ?? AGENT_BUILDERS.claude;
 
-  return { type, command, buildArgs };
+  return {
+    type,
+    command,
+    buildArgs,
+    costTier: catalog.costTier,
+    memoryMB: catalog.memoryMB,
+  };
+}
+
+/**
+ * Convert Task to WorkUnit using cost-tier routing.
+ * Use this for bulk/free execution (100-1000 agents).
+ */
+export function toWorkUnitByTier(
+  task: Task,
+  repoPath: string,
+  strategy: CostTierStrategy = "minimize-cost",
+  freeclawBase?: string,
+): WorkUnit {
+  const { agentType, tier } = routeTaskByTier(task, strategy);
+  const catalog = AGENT_CATALOG[agentType] ?? AGENT_CATALOG.opencode;
+
+  // For aider with FreeClaw, inject API base
+  const env: Record<string, string> = {};
+  if (agentType === "aider" && freeclawBase) {
+    env.OPENAI_API_BASE = freeclawBase;
+  }
+
+  return {
+    id: task.ID,
+    repoPath,
+    baseBranch: getCurrentBranch(repoPath),
+    taskPrompt: buildTaskPrompt(task),
+    agentConfig: {
+      type: agentType,
+      command: catalog.command,
+      buildArgs: AGENT_BUILDERS[agentType] ?? AGENT_BUILDERS.opencode,
+      env,
+      costTier: catalog.costTier as CostTier,
+      memoryMB: catalog.memoryMB,
+    },
+    constraints: {
+      timeoutMs: task.maxExecutionTimeMs ?? 300_000,
+      maxTokens: task.estimatedTokens,
+    },
+  };
 }
 
 // ─── Result Validator ───

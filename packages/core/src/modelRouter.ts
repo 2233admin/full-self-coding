@@ -50,7 +50,7 @@ const CATEGORY_PATTERNS: Record<TaskCategory, RegExp> = {
   unknown: /./,
 };
 
-/** 分类 → 默认 Agent 映射 */
+/** 分类 → 默认 Agent 映射 (premium tier) */
 const CATEGORY_AGENT_MAP: Record<TaskCategory, SWEAgentType> = {
   analysis: SWEAgentType.CLAUDE_CODE,
   implementation: SWEAgentType.CODEX,
@@ -60,6 +60,85 @@ const CATEGORY_AGENT_MAP: Record<TaskCategory, SWEAgentType> = {
   documentation: SWEAgentType.GEMINI_CLI,
   unknown: SWEAgentType.CLAUDE_CODE,
 };
+
+/**
+ * Cost-tier routing: 按任务复杂度选最便宜的能干的agent
+ *
+ * premium: 架构/高风险/复杂分析 → claude, codex
+ * budget:  标准实现/前端 → gemini, aider (via FreeClaw)
+ * free:    测试/文档/lint/简单任务 → opencode, ollama
+ */
+import type { CostTier, AgentType } from './execution/types';
+
+export type CostTierStrategy = "minimize-cost" | "maximize-quality" | "balanced";
+
+const TIER_AGENT_MAP: Record<CostTier, Record<TaskCategory, AgentType>> = {
+  premium: {
+    analysis: "claude",
+    implementation: "codex",
+    frontend: "gemini",
+    testing: "codex",
+    refactoring: "claude",
+    documentation: "gemini",
+    unknown: "claude",
+  },
+  budget: {
+    analysis: "gemini",
+    implementation: "aider",
+    frontend: "gemini",
+    testing: "aider",
+    refactoring: "aider",
+    documentation: "aider",
+    unknown: "aider",
+  },
+  free: {
+    analysis: "opencode",
+    implementation: "opencode",
+    frontend: "opencode",
+    testing: "opencode",
+    refactoring: "opencode",
+    documentation: "opencode",
+    unknown: "opencode",
+  },
+};
+
+/**
+ * Route task by cost tier.
+ * For "minimize-cost": use free for low-risk, budget for medium, premium only for critical.
+ * For "maximize-quality": always premium.
+ * For "balanced": free for testing/docs, budget for impl, premium for analysis/refactor.
+ */
+export function routeTaskByTier(
+  task: Task,
+  strategy: CostTierStrategy = "minimize-cost",
+): { agentType: AgentType; tier: CostTier; reason: string } {
+  const category = classifyTask(task);
+  const risk = task.riskLevel ?? "low";
+
+  let tier: CostTier;
+
+  if (strategy === "maximize-quality") {
+    tier = "premium";
+  } else if (strategy === "minimize-cost") {
+    // Only use premium for critical tasks
+    if (risk === "critical") tier = "premium";
+    else if (risk === "high") tier = "budget";
+    else tier = "free";
+  } else {
+    // balanced: route by category nature
+    if (category === "analysis" || category === "refactoring") tier = "premium";
+    else if (category === "implementation" || category === "frontend") tier = "budget";
+    else tier = "free"; // testing, documentation, unknown
+  }
+
+  const agentType = TIER_AGENT_MAP[tier][category];
+
+  return {
+    agentType,
+    tier,
+    reason: `strategy=${strategy}, category=${category}, risk=${risk} → tier=${tier} → ${agentType}`,
+  };
+}
 
 /**
  * 对任务文本做分类
