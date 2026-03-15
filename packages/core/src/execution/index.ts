@@ -8,3 +8,5 @@ export * from "./local";
 export * from "./remote";
 export * from "./collector";
 export * from "./mapping";
+export * from "./pool";
+export * from "./sequencer";
