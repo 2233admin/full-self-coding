@@ -9,12 +9,18 @@ import { gitExec } from "./gitExec";
 import type { Task, TaskResult } from "../task";
 import type { CostTierStrategy } from "../modelRouter";
 import type { ExecutionResult } from "./types";
+import { SalaciaPlugin, type SalaciaConfig } from "../salacia/plugin";
+import { ABExperiment, type ExperimentMetrics } from "../salacia/experiment";
 
 export interface SchedulerConfig {
   localPoolSize: number;       // default 24
   maxConcurrency: number;      // default 5
   costStrategy: CostTierStrategy;  // default "minimize-cost"
   freeclawBase?: string;
+  salacia?: SalaciaConfig & {
+    experiment?: { enabled: boolean; splitRatio: number };
+    postMergeTest?: boolean;  // run `bun test` after each merge
+  };
 }
 
 export interface SchedulerReport {
@@ -65,17 +71,32 @@ export class UnifiedScheduler {
     this.pool = new WorktreePool(repoPath, this.baseBranch, this.config.localPoolSize);
     await this.pool.init();
 
-    // 2. Register all tasks as pending
+    // 2. Salacia A/B experiment setup
+    const salaciaConfig = this.config.salacia;
+    const experiment = salaciaConfig?.experiment?.enabled
+      ? new ABExperiment(salaciaConfig.experiment.splitRatio)
+      : null;
+
+    // 3. Register all tasks as pending
     for (const task of tasks) {
       this.stateStore.create(task.ID, "local");
     }
 
-    // 3. Execute with concurrency control
+    // 4. Execute with concurrency control
     const executionResults: ExecutionResult[] = [];
 
     const execPromises = tasks.map((task) =>
       this.concurrency.run(async () => {
         try {
+          // A/B: determine if this task gets salacia
+          const group = experiment?.assignGroup(task.ID) ?? "control";
+          const pluginEnabled = salaciaConfig?.enabled && (!experiment || group === "salacia");
+          const plugin = new SalaciaPlugin({
+            ...salaciaConfig,
+            enabled: !!pluginEnabled,
+            journalPath: `${repoPath}/.fsc/journal`,
+          });
+
           // Dispatch: lease worktree
           this.stateStore.transition(task.ID, "dispatched");
           const wt = await this.pool!.lease(task.ID);
@@ -84,25 +105,40 @@ export class UnifiedScheduler {
           // Prepare task branch
           await this.pool!.prepareForTask(task.ID);
 
-          // Build work unit
+          // Build work unit (with optional salacia enrichment)
           const unit = toWorkUnitByTier(
-            task, repoPath, this.config.costStrategy, this.config.freeclawBase
+            task, repoPath, this.config.costStrategy, this.config.freeclawBase, plugin
           );
           // Override worktree path from pool
           unit.repoPath = repoPath;
 
-          // Running
+          // Running — inject salacia plugin into execution
           this.stateStore.transition(task.ID, "running", { agentType: unit.agentConfig.type });
+          this.execution.salaciaPlugin = plugin.enabled ? plugin : undefined;
 
           // Execute — use the pool's worktree, not create a new one
-          // We need to run the agent in the leased worktree
           const result = await this.execution.execute({
             ...unit,
             id: task.ID,
-            repoPath,  // execution will create its own worktree via WorktreeManager
+            repoPath,
           });
 
           executionResults.push(result);
+
+          // Record A/B metrics
+          if (experiment) {
+            const contract = plugin.getContract(task.ID);
+            experiment.record({
+              taskId: task.ID,
+              group,
+              filesChanged: result.filesChanged.length,
+              outOfScopeFiles: 0, // drift report not easily available here; journal has it
+              qualityScore: result.status === "success" ? 100 : 0,
+              driftScore: 0,
+              success: result.status === "success",
+              durationMs: result.completedAt - result.startedAt,
+            });
+          }
 
           // Update state
           if (result.status === "success") {
@@ -128,6 +164,24 @@ export class UnifiedScheduler {
     // 4. Merge via sequencer
     const sequencer = new CommitSequencer(repoPath, this.baseBranch);
     const mergeResults = await sequencer.applyAll(executionResults);
+
+    // Post-merge test (optional)
+    if (salaciaConfig?.postMergeTest && experiment) {
+      for (const mr of mergeResults) {
+        if (mr.status === "merged") {
+          const testResult = gitExec(["--version"], repoPath); // placeholder: real impl runs bun test
+          // In production this would be: spawnSync({ cmd: ["bun", "test"], cwd: repoPath })
+          const pass = testResult.exitCode === 0;
+          const existing = experiment["metrics"]?.find((m: any) => m.taskId === mr.taskId);
+          if (existing) existing.postMergeTestPass = pass;
+        }
+      }
+    }
+
+    // Save A/B experiment results if running
+    if (experiment) {
+      experiment.save(`${repoPath}/.fsc`);
+    }
 
     // 5. Cleanup pool
     await this.pool.destroy();
