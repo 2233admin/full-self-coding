@@ -54,7 +54,7 @@ export interface ExecutionResult {
   };
 }
 
-export type ExecutionStatus = "pending" | "running" | "completed" | "failed" | "aborted";
+export type ExecutionStatus = "pending" | "running" | "waiting" | "completed" | "failed" | "aborted";
 
 export interface WorktreeInfo {
   worktreePath: string;
