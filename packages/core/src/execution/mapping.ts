@@ -6,6 +6,7 @@ import { AGENT_BUILDERS, AGENT_CATALOG } from "./types";
 import type { Config } from "../config";
 import { routeTask, routeTaskByTier, type CostTierStrategy } from "../modelRouter";
 import { gitExec } from "./gitExec";
+import type { SalaciaPlugin } from "../salacia/plugin";
 
 export function toTaskResult(er: ExecutionResult, originalTask: Task): TaskResult {
   const statusMap: Record<ExecutionResult["status"], TaskStatus> = {
@@ -92,6 +93,7 @@ export function toWorkUnitByTier(
   repoPath: string,
   strategy: CostTierStrategy = "minimize-cost",
   freeclawBase?: string,
+  salaciaPlugin?: SalaciaPlugin,
 ): WorkUnit {
   const { agentType, tier } = routeTaskByTier(task, strategy);
   const catalog = AGENT_CATALOG[agentType] ?? AGENT_CATALOG.opencode;
@@ -102,7 +104,7 @@ export function toWorkUnitByTier(
     env.OPENAI_API_BASE = freeclawBase;
   }
 
-  return {
+  const unit: WorkUnit = {
     id: task.ID,
     repoPath,
     baseBranch: getCurrentBranch(repoPath),
@@ -120,6 +122,12 @@ export function toWorkUnitByTier(
       maxTokens: task.estimatedTokens,
     },
   };
+
+  // Salacia hook: enrich with scope contract if plugin provided
+  if (salaciaPlugin) {
+    return salaciaPlugin.enrichWorkUnit(unit, task);
+  }
+  return unit;
 }
 
 // ─── Result Validator ───

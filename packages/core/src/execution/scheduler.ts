@@ -31,6 +31,7 @@ export interface SchedulerReport {
   tasks: TaskState[];
   mergeResults: SequencerResult[];
   durationMs: number;
+  zeroRegressionRate?: number;  // SWE-CI inspired: fraction of merges where ALL pre-existing tests still pass
 }
 
 // FSC Runner API types (for claw-grid integration, Phase 2)
@@ -165,16 +166,45 @@ export class UnifiedScheduler {
     const sequencer = new CommitSequencer(repoPath, this.baseBranch);
     const mergeResults = await sequencer.applyAll(executionResults);
 
-    // Post-merge test (optional)
-    if (salaciaConfig?.postMergeTest && experiment) {
+    // Post-merge regression test (SWE-CI Zero-Regression Rate)
+    let zeroRegressionCount = 0;
+    let mergedCount = 0;
+    if (salaciaConfig?.postMergeTest) {
       for (const mr of mergeResults) {
         if (mr.status === "merged") {
-          const testResult = gitExec(["--version"], repoPath); // placeholder: real impl runs bun test
-          // In production this would be: spawnSync({ cmd: ["bun", "test"], cwd: repoPath })
+          mergedCount++;
+          const testResult = Bun.spawnSync({ cmd: ["bun", "test"], cwd: repoPath, timeout: 120_000 });
           const pass = testResult.exitCode === 0;
-          const existing = experiment["metrics"]?.find((m: any) => m.taskId === mr.taskId);
-          if (existing) existing.postMergeTestPass = pass;
+          if (pass) zeroRegressionCount++;
+          if (experiment) {
+            const existing = experiment["metrics"]?.find((m: any) => m.taskId === mr.taskId);
+            if (existing) existing.postMergeTestPass = pass;
+          }
+          if (!pass) {
+            console.log(`[ZeroRegression] FAIL after merge of task ${mr.taskId} — tests broke`);
+          }
         }
+      }
+    }
+
+    // MEMO-inspired: inverse-frequency replay log for regression failures
+    // Failed merges get recorded so retryFailed() can prioritize rare/hard failures
+    if (salaciaConfig?.postMergeTest && mergedCount > 0) {
+      const replayPath = `${repoPath}/.fsc/regression-replay.json`;
+      let replay: Record<string, number> = {};
+      try { replay = JSON.parse(require("fs").readFileSync(replayPath, "utf-8")); } catch {}
+      for (const mr of mergeResults) {
+        if (mr.status === "merged") {
+          const existing = experiment?.["metrics"]?.find((m: any) => m.taskId === mr.taskId);
+          if (existing && !existing.postMergeTestPass) {
+            replay[mr.taskId] = (replay[mr.taskId] || 0) + 1;
+          }
+        }
+      }
+      if (Object.keys(replay).length > 0) {
+        require("fs").mkdirSync(`${repoPath}/.fsc`, { recursive: true });
+        require("fs").writeFileSync(replayPath, JSON.stringify(replay, null, 2));
+        console.log(`[ReplayLog] ${Object.keys(replay).length} tasks in regression replay buffer`);
       }
     }
 
@@ -197,6 +227,7 @@ export class UnifiedScheduler {
       tasks: this.stateStore.list(),
       mergeResults,
       durationMs,
+      zeroRegressionRate: mergedCount > 0 ? zeroRegressionCount / mergedCount : undefined,
     };
   }
 
@@ -210,11 +241,22 @@ export class UnifiedScheduler {
     this.stateStore.markAborted(taskId);
   }
 
-  /** Retry all failed tasks */
+  /** Retry all failed tasks, prioritized by inverse-frequency replay (MEMO-inspired) */
   async retryFailed(repoPath?: string): Promise<SchedulerReport> {
     const failed = this.stateStore.getFailedTasks();
-    for (const f of failed) {
+
+    // Sort by regression replay count (most failures first = highest priority)
+    let replay: Record<string, number> = {};
+    if (repoPath) {
+      try { replay = JSON.parse(require("fs").readFileSync(`${repoPath}/.fsc/regression-replay.json`, "utf-8")); } catch {}
+    }
+    const sorted = [...failed].sort((a, b) => (replay[b.taskId] || 0) - (replay[a.taskId] || 0));
+
+    for (const f of sorted) {
       this.stateStore.markForRetry(f.taskId);
+    }
+    if (Object.keys(replay).length > 0) {
+      console.log(`[RetryFailed] Prioritized by replay count: ${sorted.slice(0, 3).map(f => `${f.taskId}(${replay[f.taskId] || 0})`).join(', ')}`);
     }
     // Re-execute would need original Task objects — return current state for now
     return {

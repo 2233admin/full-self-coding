@@ -6,6 +6,7 @@ import { gitExec } from "./gitExec";
 import { WorktreeManager } from "./worktree";
 import type { ExecutionStrategy } from "./strategy";
 import type { WorkUnit, ExecutionResult, ExecutionStatus } from "./types";
+import type { SalaciaPlugin } from "../salacia/plugin";
 
 const FSC_AUTHOR = "FSC Worker <fsc@full-self-coding>";
 
@@ -13,6 +14,7 @@ export class LocalExecution implements ExecutionStrategy {
   private worktreeManager: WorktreeManager;
   private running: Map<string, Subprocess> = new Map();
   private statuses: Map<string, ExecutionStatus> = new Map();
+  salaciaPlugin?: SalaciaPlugin;
 
   constructor(worktreeManager: WorktreeManager) {
     this.worktreeManager = worktreeManager;
@@ -93,10 +95,27 @@ export class LocalExecution implements ExecutionStrategy {
       this.running.delete(unit.id);
     }
 
-    // 5. Auto-commit if agent left uncommitted changes (exclude .fsc/ dir)
+    // 5. Salacia drift check (before commit — can block)
+    const preCommitFiles = this.getFilesChanged(worktreePath, unit.baseBranch);
+    if (this.salaciaPlugin?.enabled && preCommitFiles.length > 0) {
+      const drift = this.salaciaPlugin.checkDrift(unit.id, preCommitFiles, worktreePath);
+      if (drift.blocked) {
+        this.statuses.set(unit.id, "failed");
+        const completedAt = Date.now();
+        return {
+          workUnitId: unit.id, status: "failure", commitHash: null, branch,
+          worktreePath, startedAt, completedAt,
+          agent: { type: unit.agentConfig.type },
+          filesChanged: preCommitFiles, logs: [...stdoutChunks, ...stderrChunks].filter(Boolean).slice(-100),
+          error: { message: `Salacia: protected path violation [${drift.report!.protectedViolations.join(", ")}]`, category: "QUALITY" },
+        };
+      }
+    }
+
+    // 6. Auto-commit if agent left uncommitted changes (exclude .fsc/ dir)
     const commitHash = this.autoCommitIfNeeded(worktreePath, unit.id, unit.baseBranch);
 
-    // 6. Collect files changed
+    // 7. Collect files changed
     const filesChanged = this.getFilesChanged(worktreePath, unit.baseBranch);
 
     // 7. Build result
