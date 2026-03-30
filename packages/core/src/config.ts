@@ -165,6 +165,55 @@ export interface Config {
      * special instructions for code analyzer
      */
     specialInstructionsForCodeAnalyzer?: string;
+
+    // ─── Harness execution mode ───────────────────────────────────────────────
+
+    /**
+     * Harness execution environment.
+     * - 'docker'  — run coding agent in Docker container (default, recommended)
+     * - 'sandbox' — use /sandbox endpoint instead of Docker (Anthropic cloud sandbox)
+     * - 'local'   — run directly on host without isolation (dev/testing only)
+     * @default 'docker'
+     */
+    harnessMode?: 'docker' | 'sandbox' | 'local';
+
+    // ─── Parallel agent support ───────────────────────────────────────────────
+
+    /**
+     * Number of coding agents that can run concurrently.
+     * When >1, file-lock-based coordination is enabled to prevent progress.txt conflicts.
+     * @default 1
+     */
+    maxParallelAgents?: number;
+
+    /**
+     * Directory where progress.txt and agent lock files are stored.
+     * Useful when running multiple FSC instances against different repos from the same host.
+     * @default './'
+     */
+    progressDir?: string;
+
+    // ─── Programmatic tool calling (Anthropic Advanced Tool Use) ─────────────
+
+    /**
+     * Enable programmatic tool calling mode.
+     * When true, the coding agent can write code that batch-invokes tools programmatically,
+     * following the Anthropic "Advanced Tool Use" + "Code Execution with MCP" pattern.
+     * Significantly increases throughput for data-processing and multi-step tool chains.
+     * @default false
+     */
+    enableProgrammaticToolCalling?: boolean;
+
+    // ─── Tool deferred loading ────────────────────────────────────────────────
+
+    /**
+     * Defer tool schema loading until first use.
+     * When true, tool definitions are not sent in the initial system prompt;
+     * instead they are discovered on demand. Saves ~85% of tool-related tokens
+     * for large tool sets where most tools are never called in a given session.
+     * @default false
+     */
+    deferToolLoading?: boolean;
 }
 
 /**
@@ -183,6 +232,12 @@ export const DEFAULT_CONFIG: Config = {
     dockerCpuCores: 1,
     workStyle: WorkStyle.DEFAULT,
     codingStyleLevel: 0,
+    // Harness defaults
+    harnessMode: 'docker',
+    maxParallelAgents: 1,
+    progressDir: './',
+    enableProgrammaticToolCalling: false,
+    deferToolLoading: false,
 };
 
 /**

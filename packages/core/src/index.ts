@@ -38,6 +38,9 @@ export * from './SWEAgent/SWEAgentTaskSolverCommands';
 
 // Model Router (multi-model task routing)
 export * from './modelRouter';
+// Harness (Initializer + Evaluator — Anthropic best-practice agent loop)
+export * from './harness/index';
+
 // CodeRAG (Reference-Augmented Generation)
 export { CodeRAG, type CodeRAGConfig, type RAGQueryResult, type RepoIndex, type FileReference } from './codeRAG';
 
