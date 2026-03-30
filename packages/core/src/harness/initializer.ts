@@ -266,9 +266,13 @@ export async function claimFeature(
 
     try {
       const lock: LockFile = { agentId, claimedAt: new Date().toISOString() };
-      fs.writeFileSync(lockPath, JSON.stringify(lock), "utf8");
-    } catch (e) {
-      return { ok: false, error: `Failed to write lock for ${feature.id}: ${e}` };
+      // O_EXCL: exclusive create，原子操作，防止两个 agent 同时通过检查
+      const fd = await fs.promises.open(lockPath, "wx");
+      await fd.writeFile(JSON.stringify(lock), "utf8");
+      await fd.close();
+    } catch {
+      // 文件已存在（另一个 agent 抢先写入），跳到下一个 feature
+      continue;
     }
 
     feature.status = "in_progress";
