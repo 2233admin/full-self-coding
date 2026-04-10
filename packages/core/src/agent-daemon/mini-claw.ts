@@ -125,6 +125,15 @@ async function forwardRequest(req: Request): Promise<Response> {
     return Response.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
+  // Direction 1: advisor model rewrite
+  // Set ADVISOR_MODEL_OVERRIDE=claude-sonnet-4-6 to route advisor calls away from Opus
+  const advisorOverride = Bun.env.ADVISOR_MODEL_OVERRIDE;
+  if (advisorOverride && Array.isArray(parsed.tools)) {
+    parsed.tools = parsed.tools.map((t: any) =>
+      t.type === "advisor_20260301" ? { ...t, model: advisorOverride } : t
+    );
+  }
+
   const model = parsed.model || "";
   const candidates = findProviders(model);
 
@@ -158,6 +167,10 @@ async function forwardRequest(req: Request): Promise<Response> {
     if (p.api === "anthropic-messages") {
       headers["x-api-key"] = p.apiKey;
       headers["anthropic-version"] = "2023-06-01";
+      // Add advisor beta header when request contains advisor tool
+      if (Array.isArray(parsed.tools) && parsed.tools.some((t: any) => t.type === "advisor_20260301")) {
+        headers["anthropic-beta"] = "advisor-tool-2026-03-01";
+      }
     } else {
       headers["Authorization"] = `Bearer ${p.apiKey}`;
     }
