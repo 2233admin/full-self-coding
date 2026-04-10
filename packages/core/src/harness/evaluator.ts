@@ -23,7 +23,8 @@ export interface EvalResult {
 export interface DiyAdvisorConfig {
   executorModel: string;   // e.g. "doubao-seed-2.0-code"
   advisorModel: string;    // e.g. "kimi-k2.5"
-  miniClawUrl: string;     // e.g. "http://127.0.0.1:18795"
+  proxyUrl: string;        // e.g. "http://127.0.0.1:18795" (MiniClaw) or any OpenAI-compat proxy
+  apiFormat?: "anthropic-messages" | "openai"; // default "anthropic-messages"
   maxUses?: number;        // default 3
   scoreThreshold?: number; // call advisor if score < threshold (default 70)
 }
@@ -283,33 +284,56 @@ export async function evaluateBatch(
 
 // ─── DIY Advisor ───
 
-// Generic LLM call via MiniClaw (anthropic-messages format)
+// Generic LLM call — supports anthropic-messages and openai formats
 async function callLLM(
   model: string,
   systemPrompt: string,
   userMessage: string,
-  miniClawUrl: string,
+  proxyUrl: string,
+  apiFormat: "anthropic-messages" | "openai" = "anthropic-messages",
 ): Promise<Result<string>> {
-  const res = await fetch(`${miniClawUrl}/v1/messages`, {
-    method: "POST",
-    headers: {
+  const base = proxyUrl.replace(/\/$/, "");
+
+  let url: string;
+  let headers: Record<string, string>;
+  let bodyObj: unknown;
+
+  if (apiFormat === "openai") {
+    url = `${base}/v1/chat/completions`;
+    headers = { "Content-Type": "application/json", "Authorization": "Bearer proxy-internal" };
+    bodyObj = {
+      model,
+      max_tokens: 2048,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+    };
+  } else {
+    url = `${base}/v1/messages`;
+    headers = {
       "Content-Type": "application/json",
-      "x-api-key": "miniclaw-internal",
+      "x-api-key": "proxy-internal",
       "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
+    };
+    bodyObj = {
       model,
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
-    }),
-  });
+    };
+  }
+
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(bodyObj) });
   if (!res.ok) {
     return { ok: false, error: `callLLM ${model} ${res.status}: ${await res.text()}` };
   }
   const json = await res.json() as any;
-  const text = (json.content as Array<{ type: string; text: string }>)
-    ?.find(c => c.type === "text")?.text ?? "";
+
+  const text = apiFormat === "openai"
+    ? (json.choices?.[0]?.message?.content ?? "")
+    : ((json.content as Array<{ type: string; text: string }>)?.find(c => c.type === "text")?.text ?? "");
+
   return { ok: true, value: text };
 }
 
@@ -351,7 +375,8 @@ async function runAdvisorRound(
     config.advisorModel,
     buildAdvisorSystemPrompt(),
     buildAdvisorUserMessage(originalContext, initialResult),
-    config.miniClawUrl,
+    config.proxyUrl,
+    config.apiFormat,
   );
   if (!llmResult.ok) {
     console.warn(`[diy-advisor] advisor call failed: ${llmResult.error}`);
@@ -404,7 +429,7 @@ export async function evaluateWithAdvisor(
   const userMessage = buildEvaluatorUserMessage(feature, commitDiff, testOutput);
 
   // Round 1: executor
-  const execResult = await callLLM(config.executorModel, systemPrompt, userMessage, config.miniClawUrl);
+  const execResult = await callLLM(config.executorModel, systemPrompt, userMessage, config.proxyUrl, config.apiFormat);
   if (!execResult.ok) return { ok: false, error: execResult.error };
 
   const raw = trimJSONSingleObject(execResult.value);

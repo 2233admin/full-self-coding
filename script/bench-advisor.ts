@@ -6,7 +6,8 @@
  *   bun run script/bench-advisor.ts --diff <file> --feature <json>
  *
  * 环境变量:
- *   MINICLAW_URL     — MiniClaw 地址 (默认 http://127.0.0.1:18795)
+ *   PROXY_URL        — LLM 代理地址 (默认 http://127.0.0.1:18795, MiniClaw 或任意 OpenAI-compat 代理)
+ *   API_FORMAT       — anthropic-messages | openai (默认 anthropic-messages)
  *   EXECUTOR_MODEL   — executor 模型 (默认 volcengine/doubao-seed-2.0-code)
  *   ADVISOR_MODEL    — advisor 模型  (默认 kimi/kimi-k2.5)
  *   CLAUDE_API_KEY   — 可选, 有则跑 Claude solo 作对照
@@ -40,15 +41,16 @@ const testOutput  = testFile ? readFileSync(testFile, "utf-8") : "";
 
 // ─── Config ───
 const config: DiyAdvisorConfig = {
-  executorModel:  Bun.env.EXECUTOR_MODEL  ?? "volcengine/doubao-seed-2.0-code",
-  advisorModel:   Bun.env.ADVISOR_MODEL   ?? "kimi/kimi-k2.5",
-  miniClawUrl:    Bun.env.MINICLAW_URL    ?? "http://127.0.0.1:18795",
+  executorModel:  Bun.env.EXECUTOR_MODEL ?? "volcengine/doubao-seed-2.0-code",
+  advisorModel:   Bun.env.ADVISOR_MODEL  ?? "kimi/kimi-k2.5",
+  proxyUrl:       Bun.env.PROXY_URL      ?? "http://127.0.0.1:18795",
+  apiFormat:      (Bun.env.API_FORMAT    ?? "anthropic-messages") as "anthropic-messages" | "openai",
   maxUses:        3,
   scoreThreshold: 70,
 };
 
 console.log(`[bench] executor=${config.executorModel} advisor=${config.advisorModel}`);
-console.log(`[bench] miniclaw=${config.miniClawUrl}`);
+console.log(`[bench] proxy=${config.proxyUrl} format=${config.apiFormat ?? "anthropic-messages"}`);
 console.log(`[bench] feature="${feature.title}"`);
 console.log("─".repeat(60));
 
