@@ -324,15 +324,25 @@ async function callLLM(
     };
   }
 
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(bodyObj) });
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(bodyObj),
+    signal: AbortSignal.timeout(60_000),
+  });
   if (!res.ok) {
     return { ok: false, error: `callLLM ${model} ${res.status}: ${await res.text()}` };
   }
-  const json = await res.json() as any;
+  let json: any;
+  try { json = await res.json(); } catch (e) {
+    return { ok: false, error: `callLLM ${model} non-JSON response: ${e}` };
+  }
 
   const text = apiFormat === "openai"
     ? (json.choices?.[0]?.message?.content ?? "")
-    : ((json.content as Array<{ type: string; text: string }>)?.find(c => c.type === "text")?.text ?? "");
+    : (Array.isArray(json.content)
+        ? (json.content as Array<{ type: string; text: string }>).find(c => c.type === "text")?.text ?? ""
+        : "");
 
   return { ok: true, value: text };
 }
@@ -398,12 +408,16 @@ async function runAdvisorRound(
   };
   if (merged.score < 70) merged.passed = false;
 
-  // Recurse if advisor itself is ambiguous and uses remain
+  // Recurse if still ambiguous — always review the original executor result (not advisor's own output)
+  // to avoid telephone-game drift where advisor reviews its own previous answer
   if (merged.score < threshold && usesLeft - 1 > 0) {
     const { result: final, callsUsed: extra } = await runAdvisorRound(
-      merged, originalContext, config, usesLeft - 1,
+      initialResult, originalContext, config, usesLeft - 1,
     );
-    return { result: final, callsUsed: 1 + extra };
+    // Take whichever round produced higher score
+    const best = final.score >= merged.score ? final : merged;
+    best.advisorCalls = (merged.advisorCalls ?? 1) + extra;
+    return { result: best, callsUsed: 1 + extra };
   }
   return { result: merged, callsUsed: 1 };
 }
@@ -462,7 +476,9 @@ export async function evaluateWithAdvisor(
 
 /**
  * 三路对比 benchmark: executor solo / advisor combo / (可选) claude solo
- * 并发执行，返回对比结果。
+ *
+ * 关键设计: executor 只跑一次，solo 和 advisor 两路 fork 同一份 executor 结果。
+ * 消除因 executor 随机性导致的 "solo vs +advisor" 分数差来自模型采样而非 advisor 贡献。
  */
 export async function advisorBenchmark(
   feature: Feature,
@@ -472,33 +488,53 @@ export async function advisorBenchmark(
   claudeApiKey?: string,
   claudeBaseUrl?: string,
 ): Promise<Result<BenchmarkResult>> {
-  const [soloResult, advisorResult, claudeResult] = await Promise.all([
-    // Executor solo (no advisor)
-    evaluateWithAdvisor(feature, commitDiff, testOutput, { ...config, maxUses: 0 }),
-    // Executor + advisor
-    evaluateWithAdvisor(feature, commitDiff, testOutput, config),
-    // Claude solo (optional)
+  const systemPrompt = buildEvaluatorSystemPrompt();
+  const userMessage = buildEvaluatorUserMessage(feature, commitDiff, testOutput);
+
+  // Executor + optional Claude run concurrently
+  const [execLLMResult, claudeResult] = await Promise.all([
+    callLLM(config.executorModel, systemPrompt, userMessage, config.proxyUrl, config.apiFormat),
     claudeApiKey
       ? evaluate(feature, commitDiff, testOutput, claudeApiKey, claudeBaseUrl)
       : Promise.resolve(null),
   ]);
 
-  if (!soloResult.ok) return { ok: false, error: `executor solo: ${soloResult.error}` };
-  if (!advisorResult.ok) return { ok: false, error: `advisor combo: ${advisorResult.error}` };
+  if (!execLLMResult.ok) return { ok: false, error: `executor: ${execLLMResult.error}` };
 
-  const callsUsed = advisorResult.value.advisorCalls ?? 0;
-  const scoreDelta = advisorResult.value.score - soloResult.value.score;
+  const raw = trimJSONSingleObject(execLLMResult.value);
+  if (!raw) return { ok: false, error: `Executor returned no JSON. Raw: ${execLLMResult.value.slice(0, 300)}` };
 
+  let executorResult: EvalResult;
+  try { executorResult = JSON.parse(raw); } catch (e) {
+    return { ok: false, error: `Executor JSON parse failed: ${e}` };
+  }
+  executorResult = {
+    passed: Boolean(executorResult.passed),
+    score: Math.max(0, Math.min(100, Number(executorResult.score) || 0)),
+    issues: Array.isArray(executorResult.issues) ? executorResult.issues.map(String) : [],
+    suggestion: String(executorResult.suggestion ?? ""),
+    advisorCalls: 0,
+  };
+  if (executorResult.score < 70) executorResult.passed = false;
+
+  console.log(`[bench] executor=${config.executorModel} score=${executorResult.score}`);
+
+  // Fork: advisor arm uses the SAME executor result — isolates advisor's actual contribution
+  const { result: withAdvisor, callsUsed } = await runAdvisorRound(
+    executorResult, userMessage, config, config.maxUses ?? 3,
+  );
+
+  const scoreDelta = withAdvisor.score - executorResult.score;
   return {
     ok: true,
     value: {
-      executorSolo: soloResult.value,
-      withAdvisor: advisorResult.value,
+      executorSolo: executorResult,
+      withAdvisor,
       claudeSolo: claudeResult?.ok ? claudeResult.value : undefined,
       advisorCallsUsed: callsUsed,
       costSavingNote: callsUsed === 0
         ? "Advisor not triggered (executor confident)"
-        : `Advisor fired ${callsUsed}x, score delta: ${scoreDelta > 0 ? "+" : ""}${scoreDelta}`,
+        : `Advisor fired ${callsUsed}x, score delta: ${scoreDelta >= 0 ? "+" : ""}${scoreDelta}`,
     },
   };
 }
