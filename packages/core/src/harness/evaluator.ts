@@ -20,11 +20,16 @@ export interface EvalResult {
   advisorCalls?: number; // DIY advisor 调用次数
 }
 
+export interface LLMEndpoint {
+  model: string;
+  baseUrl: string;   // e.g. "https://ark.cn-beijing.volces.com/api/v3" or MiniClaw URL
+  apiKey: string;
+  apiFormat?: "anthropic-messages" | "openai"; // default "openai"
+}
+
 export interface DiyAdvisorConfig {
-  executorModel: string;   // e.g. "doubao-seed-2.0-code"
-  advisorModel: string;    // e.g. "kimi-k2.5"
-  proxyUrl: string;        // e.g. "http://127.0.0.1:18795" (MiniClaw) or any OpenAI-compat proxy
-  apiFormat?: "anthropic-messages" | "openai"; // default "anthropic-messages"
+  executor: LLMEndpoint;   // doubao / any cheap model
+  advisor: LLMEndpoint;    // kimi / stronger model
   maxUses?: number;        // default 3
   scoreThreshold?: number; // call advisor if score < threshold (default 70)
 }
@@ -284,15 +289,14 @@ export async function evaluateBatch(
 
 // ─── DIY Advisor ───
 
-// Generic LLM call — supports anthropic-messages and openai formats
+// Generic LLM call — supports anthropic-messages and openai formats, direct or via proxy
 async function callLLM(
-  model: string,
+  ep: LLMEndpoint,
   systemPrompt: string,
   userMessage: string,
-  proxyUrl: string,
-  apiFormat: "anthropic-messages" | "openai" = "anthropic-messages",
 ): Promise<Result<string>> {
-  const base = proxyUrl.replace(/\/$/, "");
+  const base = ep.baseUrl.replace(/\/$/, "");
+  const apiFormat = ep.apiFormat ?? "openai";
 
   let url: string;
   let headers: Record<string, string>;
@@ -300,9 +304,9 @@ async function callLLM(
 
   if (apiFormat === "openai") {
     url = `${base}/v1/chat/completions`;
-    headers = { "Content-Type": "application/json", "Authorization": "Bearer proxy-internal" };
+    headers = { "Content-Type": "application/json", "Authorization": `Bearer ${ep.apiKey}` };
     bodyObj = {
-      model,
+      model: ep.model,
       max_tokens: 2048,
       messages: [
         { role: "system", content: systemPrompt },
@@ -313,11 +317,11 @@ async function callLLM(
     url = `${base}/v1/messages`;
     headers = {
       "Content-Type": "application/json",
-      "x-api-key": "proxy-internal",
+      "x-api-key": ep.apiKey,
       "anthropic-version": "2023-06-01",
     };
     bodyObj = {
-      model,
+      model: ep.model,
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
@@ -331,11 +335,11 @@ async function callLLM(
     signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) {
-    return { ok: false, error: `callLLM ${model} ${res.status}: ${await res.text()}` };
+    return { ok: false, error: `callLLM ${ep.model} ${res.status}: ${await res.text()}` };
   }
   let json: any;
   try { json = await res.json(); } catch (e) {
-    return { ok: false, error: `callLLM ${model} non-JSON response: ${e}` };
+    return { ok: false, error: `callLLM ${ep.model} non-JSON response: ${e}` };
   }
 
   const text = apiFormat === "openai"
@@ -382,11 +386,9 @@ async function runAdvisorRound(
   }
 
   const llmResult = await callLLM(
-    config.advisorModel,
+    config.advisor,
     buildAdvisorSystemPrompt(),
     buildAdvisorUserMessage(originalContext, initialResult),
-    config.proxyUrl,
-    config.apiFormat,
   );
   if (!llmResult.ok) {
     console.warn(`[diy-advisor] advisor call failed: ${llmResult.error}`);
@@ -443,7 +445,7 @@ export async function evaluateWithAdvisor(
   const userMessage = buildEvaluatorUserMessage(feature, commitDiff, testOutput);
 
   // Round 1: executor
-  const execResult = await callLLM(config.executorModel, systemPrompt, userMessage, config.proxyUrl, config.apiFormat);
+  const execResult = await callLLM(config.executor, systemPrompt, userMessage);
   if (!execResult.ok) return { ok: false, error: execResult.error };
 
   const raw = trimJSONSingleObject(execResult.value);
@@ -461,14 +463,14 @@ export async function evaluateWithAdvisor(
   };
   if (initial.score < 70) initial.passed = false;
 
-  console.log(`[diy-advisor] executor=${config.executorModel} score=${initial.score}`);
+  console.log(`[diy-advisor] executor=${config.executor.model} score=${initial.score}`);
 
   // Round 2+: advisor if needed
   const { result, callsUsed } = await runAdvisorRound(
     initial, userMessage, config, config.maxUses ?? 3,
   );
   if (callsUsed > 0) {
-    console.log(`[diy-advisor] advisor=${config.advisorModel} calls=${callsUsed} final_score=${result.score}`);
+    console.log(`[diy-advisor] advisor=${config.advisor.model} calls=${callsUsed} final_score=${result.score}`);
   }
 
   return { ok: true, value: result };
@@ -493,7 +495,7 @@ export async function advisorBenchmark(
 
   // Executor + optional Claude run concurrently
   const [execLLMResult, claudeResult] = await Promise.all([
-    callLLM(config.executorModel, systemPrompt, userMessage, config.proxyUrl, config.apiFormat),
+    callLLM(config.executor, systemPrompt, userMessage),
     claudeApiKey
       ? evaluate(feature, commitDiff, testOutput, claudeApiKey, claudeBaseUrl)
       : Promise.resolve(null),
@@ -517,7 +519,7 @@ export async function advisorBenchmark(
   };
   if (executorResult.score < 70) executorResult.passed = false;
 
-  console.log(`[bench] executor=${config.executorModel} score=${executorResult.score}`);
+  console.log(`[bench] executor=${config.executor.model} score=${executorResult.score}`);
 
   // Fork: advisor arm uses the SAME executor result — isolates advisor's actual contribution
   const { result: withAdvisor, callsUsed } = await runAdvisorRound(

@@ -27,5 +27,5 @@ export {
 } from "./initializer";
 
 // Evaluator
-export type { EvalResult, DiyAdvisorConfig, BenchmarkResult, PassKResult } from "./evaluator";
+export type { EvalResult, LLMEndpoint, DiyAdvisorConfig, BenchmarkResult, PassKResult } from "./evaluator";
 export { evaluate, evaluateBatch, evaluateWithAdvisor, advisorBenchmark } from "./evaluator";
