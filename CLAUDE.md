@@ -1,3 +1,5 @@
+@PROJECT_INDEX.json
+
 # CLAUDE.md — full-self-coding (FSC)
 
 ## 项目概述

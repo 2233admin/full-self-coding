@@ -186,3 +186,5 @@ test/apiKeySetup.ts
 .gitnexus
 AGENTS.md
 providers.json
+
+.grit

@@ -103,17 +103,58 @@ const TIER_AGENT_MAP: Record<CostTier, Record<TaskCategory, AgentType>> = {
 };
 
 /**
+ * Assess risk from task content when riskLevel is not explicitly set.
+ * Signals: priority, keyword density, estimated scope.
+ */
+export function assessRisk(task: Task): 'low' | 'medium' | 'high' | 'critical' {
+  const text = `${task.title} ${task.description}`.toLowerCase();
+  let score = 0;
+
+  // Priority signal: high priority tasks are likely higher risk
+  if (task.priority >= 5) score += 3;
+  else if (task.priority >= 3) score += 1;
+
+  // Security/concurrency keywords in task description
+  const highRiskPatterns = /auth|secur|password|token|session|encrypt|permission|rbac|sql|inject|exec\(|eval\(/i;
+  const concurrencyPatterns = /concurren|parallel|race|deadlock|lock|mutex|atomic|thread|async.*shared/i;
+  const architecturePatterns = /architect|migrat|schema.*change|breaking.*change|api.*contract|cross.*module/i;
+
+  if (highRiskPatterns.test(text)) score += 2;
+  if (concurrencyPatterns.test(text)) score += 2;
+  if (architecturePatterns.test(text)) score += 2;
+
+  // Scope signal: long descriptions suggest complex tasks
+  if (text.length > 500) score += 1;
+  if (text.length > 1000) score += 1;
+
+  // Token estimate signal
+  if (task.estimatedTokens && task.estimatedTokens > 50_000) score += 1;
+  if (task.estimatedTokens && task.estimatedTokens > 100_000) score += 2;
+
+  // Multi-dependency signal
+  if (task.dependsOn && task.dependsOn.length >= 3) score += 1;
+
+  if (score >= 6) return 'critical';
+  if (score >= 4) return 'high';
+  if (score >= 2) return 'medium';
+  return 'low';
+}
+
+/**
  * Route task by cost tier.
  * For "minimize-cost": use free for low-risk, budget for medium, premium only for critical.
  * For "maximize-quality": always premium.
  * For "balanced": free for testing/docs, budget for impl, premium for analysis/refactor.
+ *
+ * When task.riskLevel is not set, auto-assesses from task content (Think-Anywhere pattern:
+ * spend compute budget where uncertainty is highest).
  */
 export function routeTaskByTier(
   task: Task,
   strategy: CostTierStrategy = "minimize-cost",
 ): { agentType: AgentType; tier: CostTier; reason: string } {
   const category = classifyTask(task);
-  const risk = task.riskLevel ?? "low";
+  const risk = task.riskLevel ?? assessRisk(task);
 
   let tier: CostTier;
 
