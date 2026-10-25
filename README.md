@@ -4,11 +4,15 @@
 
 **原版**: https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding
 
-No prompts, no instructions, no plans, you have 100~1000 AI agent coding in parallel now, solving all possible problems and issues in your codebase.
+Run many AI coding agents in parallel on one codebase, each in an isolated worktree, with scope contracts to keep their changes from colliding.
+
+> **Scale**: the scheduler defaults to 5 concurrent agents (worktree pool of 24) and the merge step is serial. Running hundreds or thousands of agents is a *goal*, not a measured capability; see [#10](https://github.com/2233admin/full-self-coding/issues/10).
 
 ## 🌟 Overview
 
-Full Self Coding (FSC) is a sophisticated framework designed to automate software engineering tasks by integrating multiple AI agents (Claude Code, Gemini CLI) within Docker containers. It provides intelligent codebase analysis, task decomposition, automated code modification, and comprehensive reporting capabilities.
+> **Status**: the TypeScript implementation in `packages/` is the current release. The core is being rewritten as a pure-Rust single binary (`crates/`, tracked in [#2](https://github.com/2233admin/full-self-coding/issues/2)); `fsc-scope` (scope contracts, drift scoring, co-change coupling) is done and is checked against the TypeScript reference with golden tests. Module boundaries and import rules: [MODULE_STRUCTURE.md](MODULE_STRUCTURE.md).
+
+Full Self Coding (FSC) is a sophisticated framework designed to automate software engineering tasks by running multiple AI coding agents (Claude Code, Gemini CLI, Codex, Cursor, and others) in parallel, each in an isolated git worktree or Docker container. It provides intelligent codebase analysis, task decomposition, automated code modification, and comprehensive reporting capabilities.
 
 ### Key Features
 
@@ -123,8 +127,10 @@ Built-in health monitoring for multi-node deployments:
 ### Prerequisites
 
 - **Bun** (v1.0.0 or higher)
-- **Docker** (latest version)
-- **Git** (for repository operations)
+- **Git** (for repository operations and the default worktree execution mode)
+- **Docker** (optional: only for `executionMode: "docker"`)
+- **Redis** (optional: only for multi-node scheduling)
+- **Rust** stable (optional: only to build or test the `crates/` workspace)
 
 
 ### Quick Start
