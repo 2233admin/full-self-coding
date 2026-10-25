@@ -1,0 +1,274 @@
+[
+  {
+    "task": {
+      "ID": "g1",
+      "title": "Fix scheduler retry",
+      "description": "The scheduler drops tasks",
+      "priority": 3,
+      "riskLevel": "high"
+    },
+    "expected": {
+      "taskId": "g1",
+      "allowedPaths": [
+        "packages/core/src/index.ts",
+        "packages/core/test/**",
+        "packages/*/test/**",
+        "tests/**",
+        ".gitignore",
+        "packages/core/src/execution/scheduler.ts",
+        "packages/core/src/execution/**",
+        "packages/core/src/task.ts",
+        "packages/core/src/taskSolver*.ts"
+      ],
+      "softAllowedPaths": [
+        "packages/core/src/**"
+      ],
+      "excludedPaths": [
+        "node_modules/**",
+        ".git/**",
+        "dist/**",
+        ".fsc/**"
+      ],
+      "protectedPaths": [
+        ".env",
+        ".env.*",
+        "package-lock.json",
+        "bun.lockb",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "*.pem",
+        "*.key",
+        "*.cert"
+      ],
+      "maxFilesChanged": 20,
+      "generatedBy": "heuristic"
+    }
+  },
+  {
+    "task": {
+      "ID": "g2",
+      "title": "Touch 'packages/core/src/codeCommitter.ts'",
+      "description": "see packages/core/src/execution/sequencer.ts and \"docs/ops/notes.md\"",
+      "priority": 1
+    },
+    "expected": {
+      "taskId": "g2",
+      "allowedPaths": [
+        "packages/core/src/index.ts",
+        "packages/core/test/**",
+        "packages/*/test/**",
+        "tests/**",
+        ".gitignore",
+        "packages/core/src/codeCommitter.ts",
+        "docs/ops/notes.md",
+        "packages/core/src/execution/sequencer.ts",
+        "packages/core/src/execution/**",
+        "README.md",
+        "docs/**"
+      ],
+      "softAllowedPaths": [
+        "packages/core/src/**",
+        "docs/ops/**"
+      ],
+      "excludedPaths": [
+        "node_modules/**",
+        ".git/**",
+        "dist/**",
+        ".fsc/**"
+      ],
+      "protectedPaths": [
+        ".env",
+        ".env.*",
+        "package-lock.json",
+        "bun.lockb",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "*.pem",
+        "*.key",
+        "*.cert"
+      ],
+      "maxFilesChanged": 5,
+      "generatedBy": "heuristic"
+    }
+  },
+  {
+    "task": {
+      "ID": "g3",
+      "title": "Plain title",
+      "description": "nothing special here",
+      "priority": 1,
+      "riskLevel": "critical"
+    },
+    "expected": {
+      "taskId": "g3",
+      "allowedPaths": [
+        "packages/core/src/index.ts",
+        "packages/core/test/**",
+        "packages/*/test/**",
+        "tests/**",
+        ".gitignore",
+        "packages/core/src/**"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [
+        "node_modules/**",
+        ".git/**",
+        "dist/**",
+        ".fsc/**"
+      ],
+      "protectedPaths": [
+        ".env",
+        ".env.*",
+        "package-lock.json",
+        "bun.lockb",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "*.pem",
+        "*.key",
+        "*.cert"
+      ],
+      "maxFilesChanged": 30,
+      "generatedBy": "heuristic"
+    }
+  },
+  {
+    "task": {
+      "ID": "g4",
+      "title": "Docs and tests",
+      "description": "update README and add test coverage, also docker",
+      "priority": 2,
+      "riskLevel": "medium"
+    },
+    "expected": {
+      "taskId": "g4",
+      "allowedPaths": [
+        "packages/core/src/index.ts",
+        "packages/core/test/**",
+        "packages/*/test/**",
+        "tests/**",
+        ".gitignore",
+        "packages/core/tests/**",
+        "tests/**",
+        "packages/core/src/dockerInstance.ts",
+        "packages/core/src/codeRAG.ts",
+        "README.md",
+        "docs/**"
+      ],
+      "softAllowedPaths": [
+        "packages/core/src/**"
+      ],
+      "excludedPaths": [
+        "node_modules/**",
+        ".git/**",
+        "dist/**",
+        ".fsc/**"
+      ],
+      "protectedPaths": [
+        ".env",
+        ".env.*",
+        "package-lock.json",
+        "bun.lockb",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "*.pem",
+        "*.key",
+        "*.cert"
+      ],
+      "maxFilesChanged": 10,
+      "generatedBy": "heuristic"
+    }
+  },
+  {
+    "task": {
+      "ID": "g5",
+      "title": "Repeat",
+      "description": "'a/b/c.ts' 'a/b/c.ts' a/b/c.ts worktree worktree",
+      "priority": 1,
+      "riskLevel": "low"
+    },
+    "expected": {
+      "taskId": "g5",
+      "allowedPaths": [
+        "packages/core/src/index.ts",
+        "packages/core/test/**",
+        "packages/*/test/**",
+        "tests/**",
+        ".gitignore",
+        "a/b/c.ts",
+        "a/b/c.ts",
+        "packages/core/src/execution/worktree.ts",
+        "packages/core/src/execution/pool.ts"
+      ],
+      "softAllowedPaths": [
+        "a/b/**",
+        "packages/core/src/execution/**"
+      ],
+      "excludedPaths": [
+        "node_modules/**",
+        ".git/**",
+        "dist/**",
+        ".fsc/**"
+      ],
+      "protectedPaths": [
+        ".env",
+        ".env.*",
+        "package-lock.json",
+        "bun.lockb",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "*.pem",
+        "*.key",
+        "*.cert"
+      ],
+      "maxFilesChanged": 5,
+      "generatedBy": "heuristic"
+    }
+  },
+  {
+    "task": {
+      "ID": "g6",
+      "title": "UPPERCASE CLI PROMPT",
+      "description": "Distributed Quality Trust Style RAG",
+      "priority": 1
+    },
+    "expected": {
+      "taskId": "g6",
+      "allowedPaths": [
+        "packages/core/src/index.ts",
+        "packages/core/test/**",
+        "packages/*/test/**",
+        "tests/**",
+        ".gitignore",
+        "packages/cli/**",
+        "packages/core/src/prompts/**",
+        "packages/core/src/codeCommitter.ts",
+        "packages/core/src/codingStyle.ts",
+        "packages/core/src/workStyle.ts",
+        "packages/core/src/codeRAG.ts",
+        "packages/core/src/distributedScheduler.ts"
+      ],
+      "softAllowedPaths": [
+        "packages/core/src/**"
+      ],
+      "excludedPaths": [
+        "node_modules/**",
+        ".git/**",
+        "dist/**",
+        ".fsc/**"
+      ],
+      "protectedPaths": [
+        ".env",
+        ".env.*",
+        "package-lock.json",
+        "bun.lockb",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "*.pem",
+        "*.key",
+        "*.cert"
+      ],
+      "maxFilesChanged": 5,
+      "generatedBy": "heuristic"
+    }
+  }
+]

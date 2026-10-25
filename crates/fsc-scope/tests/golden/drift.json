@@ -1,0 +1,394 @@
+[
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "packages/core/src/execution/**"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [],
+      "protectedPaths": [],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      "packages/core/src/execution/local.ts",
+      "packages/core/src/execution",
+      "packages/core/src/executionX/a.ts",
+      "README.md"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 10,
+      "inScopeFiles": [
+        "packages/core/src/execution/local.ts",
+        "packages/core/src/execution"
+      ],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [
+        "packages/core/src/executionX/a.ts",
+        "README.md"
+      ],
+      "protectedViolations": [],
+      "excessFiles": 0,
+      "fingerprints": {
+        "packages/core/src/execution/local.ts": "",
+        "packages/core/src/execution": "",
+        "packages/core/src/executionX/a.ts": "",
+        "README.md": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [],
+      "softAllowedPaths": [],
+      "excludedPaths": [],
+      "protectedPaths": [],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      "a.txt",
+      "sub/b.ts",
+      "x/y/z.rs"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 0,
+      "inScopeFiles": [
+        "a.txt",
+        "sub/b.ts",
+        "x/y/z.rs"
+      ],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [],
+      "protectedViolations": [],
+      "excessFiles": 0,
+      "fingerprints": {
+        "a.txt": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        "sub/b.ts": "e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317",
+        "x/y/z.rs": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "**"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [
+        "*.log"
+      ],
+      "protectedPaths": [
+        "*.pem",
+        "*.key"
+      ],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      "a.pem",
+      "dir/b.key",
+      "c.log",
+      "d.txt"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 90,
+      "inScopeFiles": [],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [
+        "c.log",
+        "d.txt"
+      ],
+      "protectedViolations": [
+        "a.pem",
+        "dir/b.key"
+      ],
+      "excessFiles": 0,
+      "fingerprints": {
+        "a.pem": "",
+        "dir/b.key": "",
+        "c.log": "",
+        "d.txt": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "src/**"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [],
+      "protectedPaths": [
+        ".env",
+        ".env.*"
+      ],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      ".env",
+      ".env.local",
+      ".env.production.bak",
+      ".envrc",
+      "src/.env",
+      "src/a.ts"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 127,
+      "inScopeFiles": [
+        "src/.env",
+        "src/a.ts"
+      ],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [
+        ".envrc"
+      ],
+      "protectedViolations": [
+        ".env",
+        ".env.local",
+        ".env.production.bak"
+      ],
+      "excessFiles": 1,
+      "fingerprints": {
+        ".env": "",
+        ".env.local": "",
+        ".env.production.bak": "",
+        ".envrc": "",
+        "src/.env": "",
+        "src/a.ts": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "docs/"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [],
+      "protectedPaths": [],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      "docs/a.md",
+      "docs",
+      "docsX/a.md"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 10,
+      "inScopeFiles": [
+        "docs/a.md"
+      ],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [
+        "docs",
+        "docsX/a.md"
+      ],
+      "protectedViolations": [],
+      "excessFiles": 0,
+      "fingerprints": {
+        "docs/a.md": "",
+        "docs": "",
+        "docsX/a.md": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "packages/core/src/taskSolver*.ts",
+        "a+b/(c).ts",
+        "x/*/y.ts"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [],
+      "protectedPaths": [],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      "packages/core/src/taskSolver.ts",
+      "packages/core/src/taskSolverManager.ts",
+      "packages/core/src/taskSolverX/deep.ts",
+      "a+b/(c).ts",
+      "aab/c.ts",
+      "x/q/r/y.ts",
+      "x/y.ts"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 14,
+      "inScopeFiles": [
+        "packages/core/src/taskSolver.ts",
+        "packages/core/src/taskSolverManager.ts",
+        "packages/core/src/taskSolverX/deep.ts",
+        "a+b/(c).ts",
+        "x/q/r/y.ts"
+      ],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [
+        "aab/c.ts",
+        "x/y.ts"
+      ],
+      "protectedViolations": [],
+      "excessFiles": 2,
+      "fingerprints": {
+        "packages/core/src/taskSolver.ts": "",
+        "packages/core/src/taskSolverManager.ts": "",
+        "packages/core/src/taskSolverX/deep.ts": "",
+        "a+b/(c).ts": "",
+        "aab/c.ts": "",
+        "x/q/r/y.ts": "",
+        "x/y.ts": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "src/**"
+      ],
+      "softAllowedPaths": [
+        "lib/**",
+        "a.txt"
+      ],
+      "excludedPaths": [
+        "src/gen/**"
+      ],
+      "protectedPaths": [
+        "src/secret.ts"
+      ],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      "src/a.ts",
+      "src/gen/x.ts",
+      "src/secret.ts",
+      "lib/z.ts",
+      "a.txt",
+      "other/q.ts"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 52,
+      "inScopeFiles": [
+        "src/a.ts"
+      ],
+      "softScopeFiles": [
+        "lib/z.ts",
+        "a.txt"
+      ],
+      "outOfScopeFiles": [
+        "src/gen/x.ts",
+        "other/q.ts"
+      ],
+      "protectedViolations": [
+        "src/secret.ts"
+      ],
+      "excessFiles": 1,
+      "fingerprints": {
+        "src/a.ts": "",
+        "src/gen/x.ts": "",
+        "src/secret.ts": "",
+        "lib/z.ts": "",
+        "a.txt": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        "other/q.ts": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "a.txt",
+        "sub/b.ts"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [],
+      "protectedPaths": [
+        "bun.lockb"
+      ],
+      "maxFilesChanged": 1,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [
+      "a.txt",
+      "sub/b.ts",
+      "bun.lockb",
+      "nope.txt",
+      "zzz.md"
+    ],
+    "expected": {
+      "taskId": "t",
+      "score": 58,
+      "inScopeFiles": [
+        "a.txt",
+        "sub/b.ts"
+      ],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [
+        "nope.txt",
+        "zzz.md"
+      ],
+      "protectedViolations": [
+        "bun.lockb"
+      ],
+      "excessFiles": 4,
+      "fingerprints": {
+        "a.txt": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        "sub/b.ts": "e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317",
+        "bun.lockb": "",
+        "nope.txt": "",
+        "zzz.md": ""
+      }
+    }
+  },
+  {
+    "contract": {
+      "taskId": "t",
+      "allowedPaths": [
+        "src/**"
+      ],
+      "softAllowedPaths": [],
+      "excludedPaths": [],
+      "protectedPaths": [],
+      "maxFilesChanged": 5,
+      "generatedAt": 0,
+      "generatedBy": "heuristic"
+    },
+    "files": [],
+    "expected": {
+      "taskId": "t",
+      "score": 0,
+      "inScopeFiles": [],
+      "softScopeFiles": [],
+      "outOfScopeFiles": [],
+      "protectedViolations": [],
+      "excessFiles": 0,
+      "fingerprints": {}
+    }
+  }
+]
