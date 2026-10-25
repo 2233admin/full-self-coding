@@ -167,45 +167,34 @@ export class UnifiedScheduler {
     const mergeResults = await sequencer.applyAll(executionResults);
 
     // Post-merge regression test (SWE-CI Zero-Regression Rate)
+    // MEMO-inspired: failed merges are logged to an inverse-frequency replay buffer
+    // so retryFailed() can prioritize rare/hard failures.
     let zeroRegressionCount = 0;
     let mergedCount = 0;
+    const regressions: string[] = [];
     if (salaciaConfig?.postMergeTest) {
       for (const mr of mergeResults) {
-        if (mr.status === "merged") {
-          mergedCount++;
-          const testResult = Bun.spawnSync({ cmd: ["bun", "test"], cwd: repoPath, timeout: 120_000 });
-          const pass = testResult.exitCode === 0;
-          if (pass) zeroRegressionCount++;
-          if (experiment) {
-            const existing = experiment["metrics"]?.find((m: any) => m.taskId === mr.taskId);
-            if (existing) existing.postMergeTestPass = pass;
-          }
-          if (!pass) {
-            console.log(`[ZeroRegression] FAIL after merge of task ${mr.taskId} — tests broke`);
-          }
+        if (!mr.success) continue;
+        mergedCount++;
+        const testResult = Bun.spawnSync({ cmd: ["bun", "test"], cwd: repoPath, timeout: 120_000 });
+        const pass = testResult.exitCode === 0;
+        if (pass) zeroRegressionCount++;
+        else {
+          regressions.push(mr.taskId);
+          console.log(`[ZeroRegression] FAIL after merge of task ${mr.taskId} — tests broke`);
         }
+        experiment?.markPostMergeTest(mr.taskId, pass);
       }
     }
 
-    // MEMO-inspired: inverse-frequency replay log for regression failures
-    // Failed merges get recorded so retryFailed() can prioritize rare/hard failures
-    if (salaciaConfig?.postMergeTest && mergedCount > 0) {
+    if (regressions.length > 0) {
       const replayPath = `${repoPath}/.fsc/regression-replay.json`;
       let replay: Record<string, number> = {};
       try { replay = JSON.parse(require("fs").readFileSync(replayPath, "utf-8")); } catch {}
-      for (const mr of mergeResults) {
-        if (mr.status === "merged") {
-          const existing = experiment?.["metrics"]?.find((m: any) => m.taskId === mr.taskId);
-          if (existing && !existing.postMergeTestPass) {
-            replay[mr.taskId] = (replay[mr.taskId] || 0) + 1;
-          }
-        }
-      }
-      if (Object.keys(replay).length > 0) {
-        require("fs").mkdirSync(`${repoPath}/.fsc`, { recursive: true });
-        require("fs").writeFileSync(replayPath, JSON.stringify(replay, null, 2));
-        console.log(`[ReplayLog] ${Object.keys(replay).length} tasks in regression replay buffer`);
-      }
+      for (const id of regressions) replay[id] = (replay[id] || 0) + 1;
+      require("fs").mkdirSync(`${repoPath}/.fsc`, { recursive: true });
+      require("fs").writeFileSync(replayPath, JSON.stringify(replay, null, 2));
+      console.log(`[ReplayLog] ${Object.keys(replay).length} tasks in regression replay buffer`);
     }
 
     // Save A/B experiment results if running

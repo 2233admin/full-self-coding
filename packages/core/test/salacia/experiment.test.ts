@@ -51,3 +51,15 @@ describe("ABExperiment", () => {
     expect(report.totalTasks).toBe(4);
   });
 });
+
+describe("ABExperiment.markPostMergeTest", () => {
+  test("sets verdict on the recorded task and ignores unknown ids", () => {
+    const exp = new ABExperiment(0.5);
+    const base = { group: "salacia" as const, filesChanged: 1, outOfScopeFiles: 0, qualityScore: 100, driftScore: 0, success: true, durationMs: 1 };
+    exp.record({ ...base, taskId: "a" });
+    exp.markPostMergeTest("a", false);
+    exp.markPostMergeTest("missing", true);
+    expect((exp as any).metrics.find((m: any) => m.taskId === "a").postMergeTestPass).toBe(false);
+    expect((exp as any).metrics).toHaveLength(1);
+  });
+});

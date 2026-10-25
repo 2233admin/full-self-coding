@@ -202,7 +202,7 @@ function startHttpApi(redis: RedisClientType): void {
 
         if (url.pathname === "/results") {
           const count = parseInt(url.searchParams.get("count") || "20");
-          const results = await redis.xRevRange(RESULT_STREAM, "+", "-", { COUNT: Math.min(count, 100) });
+          const results = (await redis!.xRevRange(RESULT_STREAM, "+", "-", { COUNT: Math.min(count, 100) })) ?? [];
           return Response.json(results.map(({ id, message }) => ({
             streamId: id, taskId: message.task_id, nodeId: message.node_id,
             status: message.status, durationMs: parseInt(message.duration_ms || "0"),
@@ -213,7 +213,7 @@ function startHttpApi(redis: RedisClientType): void {
 
         if (url.pathname.startsWith("/results/")) {
           const taskId = url.pathname.slice("/results/".length);
-          const results = await redis.xRevRange(RESULT_STREAM, "+", "-", { COUNT: 200 });
+          const results = (await redis!.xRevRange(RESULT_STREAM, "+", "-", { COUNT: 200 })) ?? [];
           const match = results.find(({ message }) => message.task_id === taskId);
           if (!match) return Response.json({ error: "Not found" }, { status: 404, headers: cors });
           return Response.json({ streamId: match.id, ...match.message }, { headers: cors });

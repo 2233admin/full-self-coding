@@ -29,7 +29,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/full-self-coding.git",
+    "url": "https://github.com/2233admin/full-self-coding.git",
     "directory": "packages/core"
   },
   "devDependencies": {
@@ -41,6 +41,7 @@
     "@types/pg": "^8.20.0",
     "@typescript-eslint/typescript-estree": "^8.57.2",
     "pg": "^8.20.0",
+    "redis": "^6.3.0",
     "toml": "^3.0.0",
     "tree-sitter": "^0.25.0",
     "tree-sitter-go": "^0.25.0",

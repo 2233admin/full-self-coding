@@ -38,11 +38,11 @@ test("checkNodeHealth returns down on fetch error", async () => {
 
 test("checkClusterHealth aggregates healthyCount correctly", async () => {
 	let callCount = 0;
-	mockFetch = spyOn(globalThis, "fetch").mockImplementation(() => {
+	mockFetch = spyOn(globalThis, "fetch").mockImplementation((() => {
 		callCount++;
 		if (callCount === 3) return Promise.reject(new Error("timeout"));
 		return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-	});
+	}) as unknown as typeof fetch);
 
 	const result = await checkClusterHealth(["central", "silicon-valley", "tokyo"], BRIDGE);
 

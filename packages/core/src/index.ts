@@ -15,7 +15,6 @@ export { readConfigWithEnv } from './configReader';
 
 // Types and interfaces
 export type { Task } from './task';
-export type { CodingStyle } from './codingStyle';
 export type { WorkStyle } from './workStyle';
 
 // Utilities

@@ -12,19 +12,6 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
-// Subclass that injects a bash mock agent instead of real CLI agents
-class TestScheduler extends UnifiedScheduler {
-  private mockShell = process.platform === "win32" ? "bash" : "/bin/sh";
-
-  // Override by monkey-patching execution after construction
-  // We expose a way to run with custom units
-  async executeWithMockAgent(tasks: Task[], repoPath: string) {
-    // Reset state
-    const scheduler = new UnifiedScheduler({ localPoolSize: 2, maxConcurrency: 2 });
-    return scheduler.executeOverride(tasks, repoPath, this.mockShell);
-  }
-}
-
 // We need to extend UnifiedScheduler to inject mock agent config.
 // The cleanest way: extend and override the internal unit-building logic.
 import { TaskStateStore } from "../../src/execution/state";
@@ -76,6 +63,8 @@ class MockScheduler {
             taskPrompt: task.description,
             agentConfig: {
               type: "custom",
+              costTier: "free",
+              memoryMB: 50,
               command: this.shell,
               buildArgs: () => [
                 "-c",
