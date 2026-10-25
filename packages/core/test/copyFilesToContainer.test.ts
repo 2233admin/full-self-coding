@@ -3,12 +3,7 @@ import { spawnSync } from "bun";
 import { DockerInstance } from "../src/dockerInstance";
 import { RunStatus } from "../src/taskExecutor";
 
-const dockerAvailable = (() => {
-  try {
-    const r = spawnSync({ cmd: ["docker", "info"], timeout: 5000 });
-    return r.exitCode === 0;
-  } catch { return false; }
-})();
+import { dockerAvailable } from "./helpers/docker";
 
 const testDocker = test.skipIf(!dockerAvailable);
 

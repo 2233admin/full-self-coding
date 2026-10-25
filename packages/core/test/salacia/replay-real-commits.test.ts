@@ -1,10 +1,12 @@
 import { describe, test, expect } from "bun:test";
+import { resolve } from "path";
 import { gitExec } from "../../src/execution/gitExec";
 import { generateContract } from "../../src/salacia/contract";
 import { detectDrift, isFatalDrift, exceedsThreshold } from "../../src/salacia/drift";
 import type { Task } from "../../src/task";
 
-const REPO = "D:/projects/full-self-coding";
+// The repository this test file lives in (test/salacia -> packages/core -> packages -> repo root).
+const REPO = resolve(import.meta.dir, "..", "..", "..", "..");
 
 function getRecentCommits(n: number): Array<{ hash: string; message: string; files: string[] }> {
   const log = gitExec(["log", "--oneline", `-${n}`], REPO);

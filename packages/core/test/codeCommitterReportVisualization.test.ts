@@ -1,7 +1,15 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
+import * as realChildProcess from "child_process";
 import { CodeCommitter } from "../src/codeCommitter";
 import type { TaskResult } from "../src/task";
 import { TaskStatus } from "../src/task";
+
+// mock.module() replaces the module for the whole process and is not undone by mock.restore().
+// Without this, every test file that runs after this one sees execSync() === 'abc123def456'.
+const originalChildProcess = { ...realChildProcess };
+afterAll(() => {
+    mock.module('child_process', () => originalChildProcess);
+});
 
 describe('CodeCommitter Beautiful Report Visualization Demo', () => {
     let mockTaskResults: TaskResult[];
