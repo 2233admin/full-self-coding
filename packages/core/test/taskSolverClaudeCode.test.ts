@@ -8,12 +8,7 @@ import { WorkStyle } from "../src/workStyle";
 import {CLAUDE_CODE_API_KEY, CLAUDE_CODE_API_URL} from "./apiKeySetup";
 import { spawnSync } from "bun";
 
-const dockerAvailable = (() => {
-  try {
-    const r = spawnSync({ cmd: ["docker", "info"], timeout: 5000 });
-    return r.exitCode === 0;
-  } catch { return false; }
-})();
+import { dockerAvailable } from "./helpers/docker";
 
 const testDocker = test.skipIf(!dockerAvailable || !process.env.ANTHROPIC_API_KEY);
 

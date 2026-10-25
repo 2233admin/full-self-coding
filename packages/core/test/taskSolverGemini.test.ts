@@ -8,12 +8,7 @@ import { WorkStyle } from "../src/workStyle";
 import {GEMINI_API_KEY} from "./apiKeySetup";
 import { spawnSync } from "bun";
 
-const dockerAvailable = (() => {
-  try {
-    const r = spawnSync({ cmd: ["docker", "info"], timeout: 5000 });
-    return r.exitCode === 0;
-  } catch { return false; }
-})();
+import { dockerAvailable } from "./helpers/docker";
 
 const testDocker = test.skipIf(!dockerAvailable || !process.env.GEMINI_API_KEY);
 

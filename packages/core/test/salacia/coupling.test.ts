@@ -1,7 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import { getCoChangedFiles, expandWithCoupling } from "../../src/salacia/coupling";
 
-const REPO = "D:/projects/full-self-coding";
+import { resolve } from "path";
+
+// The repository this test file lives in (test/salacia -> packages/core -> packages -> repo root).
+const REPO = resolve(import.meta.dir, "..", "..", "..", "..");
 
 describe("getCoChangedFiles", () => {
   test("returns co-changed files for scheduler.ts", () => {

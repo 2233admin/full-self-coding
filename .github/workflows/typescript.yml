@@ -1,0 +1,35 @@
+name: typescript
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      FSC_SKIP_DOCKER_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the co-change coupling tests read the repository's own git history
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: git identity (tests create commits)
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.com
+          git config --global init.defaultBranch main
+      # The tree-sitter native build (node-gyp) fails on current Node, locally and on the runner,
+      # and nothing under src/ or test/ imports it.
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: typecheck
+        run: bun run typecheck
+      - name: tests
+        working-directory: packages/core
+        run: bun run test
+      - name: golden fixtures are in sync with the TypeScript reference
+        run: |
+          bun script/gen-golden.ts
+          bun script/gen-merge-golden.ts
+          git diff --exit-code -- crates/*/tests/golden
