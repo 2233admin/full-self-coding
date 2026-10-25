@@ -59,6 +59,21 @@ export class WorktreeManager {
       const worktreePath = path.resolve(parentDir, `${repoName}-fsc-${taskId}`);
       const branch = `fsc/${taskId}`;
 
+      // Leftovers from an earlier run: drop dangling worktree records, and a branch that has
+      // no unmerged work. A branch that still holds commits is the user's data: refuse.
+      gitExec(["worktree", "prune"], resolvedRepo);
+      if (gitExec(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`], resolvedRepo).exitCode === 0) {
+        const ahead = gitExec(["rev-list", "--count", `${baseBranch}..${branch}`], resolvedRepo).stdout.trim();
+        if (ahead !== "0") {
+          throw new Error(
+            `branch ${branch} already exists with ${ahead} commit(s) not in ${baseBranch} (an earlier run?). ` +
+            `Merge or delete it first: git branch -D ${branch}`,
+          );
+        }
+        gitExec(["worktree", "remove", "--force", worktreePath], resolvedRepo);
+        gitExec(["branch", "-D", branch], resolvedRepo);
+      }
+
       const result = gitExec(
         ["worktree", "add", "-b", branch, worktreePath, baseBranch],
         resolvedRepo,

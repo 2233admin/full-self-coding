@@ -3,6 +3,8 @@
 import { Command } from 'commander';
 import {
   analyzeCodebase,
+  analyzeCodebaseNative,
+  UnifiedScheduler,
   TaskSolverManager,
   DistributedScheduler,
   createConfig,
@@ -44,7 +46,6 @@ export async function runFullAnalysis(): Promise<void> {
     // Use ConfigReader to load from standard location with env var support
     try {
       config = readConfigWithEnv();
-      console.log('Loaded configuration from ~/.config/full-self-coding/config.json');
     } catch (error) {
       console.error('Error loading configuration:', error);
       process.exit(1);
@@ -54,29 +55,65 @@ export async function runFullAnalysis(): Promise<void> {
   // Store configuration globally for later use
   appConfig = config;
 
-  // Log key configuration details
-  console.log('Configuration loaded:');
-  console.log(JSON.stringify(config, null, 2));
+  const mode = config.executionMode ?? 'worktree';
+  const useDistributed = process.argv.includes('--distributed') || process.env.FSC_DISTRIBUTED === '1';
+  console.log(`FSC: agent=${config.agentType} mode=${mode} repo=${process.cwd()}`);
+  if (process.env.FSC_DEBUG) console.log(JSON.stringify(config, null, 2));
 
-  let gitRemoteUrl: string;
-  try {
+  // Only docker and distributed runs fetch code from a remote; native runs use the local repo.
+  let gitRemoteUrl = '';
+  if (mode === 'docker' || useDistributed) {
     const { fetchUrl } = await getGitRemoteUrls(config.useGithubSSH);
-    gitRemoteUrl = fetchUrl || ''; // Use fetchUrl, or empty string if not found
+    gitRemoteUrl = fetchUrl || '';
     if (!gitRemoteUrl) {
-      throw new Error("Could not determine git remote URL.");
+      throw new Error(
+        `${useDistributed ? 'Distributed' : 'Docker'} mode clones the repository from its "origin" remote, ` +
+          `but this repository has none. Add one (git remote add origin <url>), or use the default native mode.`,
+      );
     }
-    console.log(`Detected Git remote URL: ${gitRemoteUrl}`);
-  } catch (error) {
-    console.error("Error getting git remote URL:", error);
-    process.exit(1);
+    console.log(`Git remote: ${gitRemoteUrl}`);
   }
 
   // Step 1: analyze the codebase and get tasks
-  const tasks: Task[] = await analyzeCodebase(config, gitRemoteUrl);
+  console.log('Analyzing the codebase...');
+  const tasks: Task[] =
+    mode === 'docker'
+      ? await analyzeCodebase(config, gitRemoteUrl)
+      : await analyzeCodebaseNative(config, process.cwd());
+  console.log(`Found ${tasks.length} task(s):`);
+  for (const t of tasks) console.log(`  - [P${t.priority}] ${t.title}`);
+
+  // Native path: worktree per task -> agent -> ordered merge onto the current branch.
+  if (mode !== 'docker' && !useDistributed) {
+    const concurrency = Math.max(1, Math.min(config.maxParallelWorktrees ?? 5, tasks.length));
+    console.log(`Running ${tasks.length} task(s), up to ${concurrency} at a time...`);
+    const scheduler = new UnifiedScheduler({
+      localPoolSize: concurrency,
+      maxConcurrency: concurrency,
+      agentType: config.agentType,
+    });
+    const report = await scheduler.execute(tasks, process.cwd());
+
+    console.log('');
+    for (const t of report.tasks) {
+      const merged = report.mergeResults.find((m) => m.taskId === t.taskId);
+      const mergeNote = merged ? (merged.success ? ` (merged${merged.resolvedTier ? `, tier ${merged.resolvedTier}` : ''})` : ` (NOT merged: ${merged.error})`) : '';
+      console.log(`  ${t.status === 'completed' && merged?.success ? 'ok  ' : 'FAIL'} ${t.taskId}${mergeNote}${t.error ? ` - ${t.error}` : ''}`);
+    }
+    const merged = report.mergeResults.filter((m) => m.success && m.resolvedTier).length;
+    console.log(`
+${report.completed}/${report.total} task(s) completed, ${merged} merged, ${report.failed} failed (${Math.round(report.durationMs / 1000)}s)`);
+
+    const logDir = `${process.cwd()}/.fsc`;
+    fs.mkdirSync(logDir, { recursive: true });
+    fs.writeFileSync(`${logDir}/last-report.json`, JSON.stringify(report, null, 2));
+    console.log(`Report: ${logDir}/last-report.json`);
+    if (report.failed > 0 || merged < report.completed) process.exit(1);
+    return;
+  }
 
   // Step 2: execute tasks — distributed (Redis Streams) or local
   let allTaskReports;
-  const useDistributed = process.argv.includes('--distributed') || process.env.FSC_DISTRIBUTED === '1';
 
   if (useDistributed) {
     console.log('[FSC] Distributed mode — submitting tasks to Redis Streams');
@@ -154,7 +191,8 @@ export function createCLI(): Command {
         }
         await runFullAnalysis();
       } catch (error) {
-        console.error('Error running full analysis:', error);
+        console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+        if (process.env.FSC_DEBUG && error instanceof Error && error.stack) console.error(error.stack);
         process.exit(1);
       }
     });

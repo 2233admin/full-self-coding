@@ -239,8 +239,9 @@ export class CommitSequencer {
   // ── Safety Checks ──────────────────────────────────────────────
 
   private preMergeChecks(commitHash: string): string | null {
-    // .fsc/ is our own runtime state (merge-history.json); it must not make the tree "dirty"
-    const status = gitExec(["status", "--porcelain", "--", ".", ":(exclude).fsc"], this.repoPath);
+    // Only tracked changes make the tree dirty: untracked files (logs, .fsc/ state) do not block a
+    // cherry-pick, and git itself refuses if one would be overwritten.
+    const status = gitExec(["status", "--porcelain", "--untracked-files=no", "--", ".", ":(exclude).fsc"], this.repoPath);
     if (status.stdout.trim()) return "working tree is dirty";
 
     const exists = gitExec(["cat-file", "-t", commitHash], this.repoPath);

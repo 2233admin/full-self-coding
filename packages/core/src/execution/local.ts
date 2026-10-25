@@ -40,6 +40,7 @@ export class LocalExecution implements ExecutionStrategy {
 
     // 4. Spawn agent process
     let timedOut = false;
+    let spawnError: string | null = null;
     let exitCode: number | null = null;
     let stdoutChunks: string[] = [];
     let stderrChunks: string[] = [];
@@ -89,7 +90,8 @@ export class LocalExecution implements ExecutionStrategy {
       }
     } catch (e: any) {
       if (!timedOut) {
-        stderrChunks.push(e?.message || String(e));
+        spawnError = e?.message || String(e);
+        stderrChunks.push(spawnError!);
       }
     } finally {
       this.running.delete(unit.id);
@@ -124,9 +126,11 @@ export class LocalExecution implements ExecutionStrategy {
       .filter(Boolean)
       .slice(-100);  // Cap at 100 lines
 
+    // An agent that exits 0 but leaves no commit did nothing; do not report that as success.
+    const noChanges = !timedOut && exitCode === 0 && commitHash === null;
     const status = timedOut
       ? "timeout" as const
-      : (exitCode === 0 ? "success" as const : "failure" as const);
+      : (exitCode === 0 && !noChanges ? "success" as const : "failure" as const);
 
     const result: ExecutionResult = {
       workUnitId: unit.id,
@@ -142,8 +146,12 @@ export class LocalExecution implements ExecutionStrategy {
       error: status !== "success" ? {
         message: timedOut
           ? `Timeout after ${unit.constraints.timeoutMs}ms`
-          : `Exit code ${exitCode}`,
-        category: timedOut ? "TRANSIENT" : "UNKNOWN",
+          : spawnError
+            ? `Could not start "${unit.agentConfig.command}": ${spawnError}`
+            : noChanges
+              ? "The agent finished but made no changes"
+              : `Exit code ${exitCode}`,
+        category: timedOut ? "TRANSIENT" : noChanges ? "QUALITY" : "UNKNOWN",
       } : undefined,
     };
 

@@ -4,7 +4,7 @@ import { ConcurrencyPool } from "./concurrency";
 import { LocalExecution } from "./local";
 import { WorktreeManager } from "./worktree";
 import { CommitSequencer, type SequencerResult } from "./sequencer";
-import { toWorkUnitByTier, toTaskResult } from "./mapping";
+import { toWorkUnitByTier, toWorkUnitForAgent, toTaskResult } from "./mapping";
 import { gitExec } from "./gitExec";
 import type { Task, TaskResult } from "../task";
 import type { CostTierStrategy } from "../modelRouter";
@@ -16,6 +16,8 @@ export interface SchedulerConfig {
   localPoolSize: number;       // default 24
   maxConcurrency: number;      // default 5
   costStrategy: CostTierStrategy;  // default "minimize-cost"
+  /** Run this agent for every task instead of cost-tier routing (e.g. "claude-code"). */
+  agentType?: string;
   freeclawBase?: string;
   salacia?: SalaciaConfig & {
     experiment?: { enabled: boolean; splitRatio: number };
@@ -68,9 +70,9 @@ export class UnifiedScheduler {
     this.repoPath = repoPath;
     this.baseBranch = gitExec(["rev-parse", "--abbrev-ref", "HEAD"], repoPath).stdout.trim() || "main";
 
-    // 1. Initialize pool
-    this.pool = new WorktreePool(repoPath, this.baseBranch, this.config.localPoolSize);
-    await this.pool.init();
+    // 1. (no pool) LocalExecution creates one worktree + branch per task itself. The pool used to
+    // lease a slot and `checkout -b fsc/<task>` in it, which made LocalExecution's own
+    // `worktree add -b fsc/<task>` fail with "branch already exists" on every task.
 
     // 2. Salacia A/B experiment setup
     const salaciaConfig = this.config.salacia;
@@ -98,26 +100,20 @@ export class UnifiedScheduler {
             journalPath: `${repoPath}/.fsc/journal`,
           });
 
-          // Dispatch: lease worktree
           this.stateStore.transition(task.ID, "dispatched");
-          const wt = await this.pool!.lease(task.ID);
-          this.stateStore.transition(task.ID, "dispatched", { worktreePath: wt.worktreePath });
-
-          // Prepare task branch
-          await this.pool!.prepareForTask(task.ID);
 
           // Build work unit (with optional salacia enrichment)
-          const unit = toWorkUnitByTier(
-            task, repoPath, this.config.costStrategy, this.config.freeclawBase, plugin
-          );
-          // Override worktree path from pool
+          const unit = this.config.agentType
+            ? toWorkUnitForAgent(task, this.config.agentType, repoPath, plugin)
+            : toWorkUnitByTier(task, repoPath, this.config.costStrategy, this.config.freeclawBase, plugin);
+          // LocalExecution creates the worktree under repoPath
           unit.repoPath = repoPath;
 
           // Running — inject salacia plugin into execution
           this.stateStore.transition(task.ID, "running", { agentType: unit.agentConfig.type });
           this.execution.salaciaPlugin = plugin.enabled ? plugin : undefined;
 
-          // Execute — use the pool's worktree, not create a new one
+          // Execute (creates its own worktree and branch)
           const result = await this.execution.execute({
             ...unit,
             id: task.ID,
@@ -153,9 +149,6 @@ export class UnifiedScheduler {
           }
         } catch (e: any) {
           this.stateStore.transition(task.ID, "failed", { error: e.message });
-        } finally {
-          // Release worktree back to pool
-          try { await this.pool!.release(task.ID); } catch {}
         }
       })
     );
@@ -202,8 +195,13 @@ export class UnifiedScheduler {
       experiment.save(`${repoPath}/.fsc`);
     }
 
-    // 5. Cleanup pool
-    await this.pool.destroy();
+    // 5. Cleanup: task worktrees always; task branches only once their commit is on the base branch
+    for (const er of executionResults) {
+      gitExec(["worktree", "remove", "--force", er.worktreePath], repoPath);
+      if (mergeResults.some(m => m.taskId === er.workUnitId && m.success)) {
+        gitExec(["branch", "-D", er.branch], repoPath);
+      }
+    }
 
     const durationMs = Date.now() - startTime;
     const summary = this.stateStore.summary();
