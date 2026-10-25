@@ -37,8 +37,8 @@ FSC 核心引擎: 把代码任务拆解成原子级子任务，分发给 100~100
 - `packages/core/src/salacia/` — 范围合同 + drift 评分
 - `MODULE_STRUCTURE.md` — 子系统状态与 import 规则 (由 `test/architecture.test.ts` 强制)
 - `packages/cli/src/index.ts` — CLI 入口
-- `cluster_config.example.json` — 集群配置模板
-- `auto_deploy.py` — 集群部署脚本
+- `script/deploy/cluster_config.example.json` — 可选集群配置模板
+- `script/deploy/auto_deploy.py` — 可选 OpenClaw+WireGuard 集群部署脚本
 
 ## 扩展计划
 - 新增 SWEAgent 适配器: MiniMax, Doubao (廉价模型)

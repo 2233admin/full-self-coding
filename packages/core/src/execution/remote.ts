@@ -1,7 +1,7 @@
 // packages/core/src/execution/remote.ts
 //
 // Phase 2 stub — RemoteExecution will dispatch WorkUnits to remote nodes via a pluggable Transport.
-// RedisTransport will reuse DistributedScheduler's Redis Streams infrastructure (see claw-mesh).
+// RedisTransport will reuse DistributedScheduler's Redis Streams infrastructure.
 
 import type { WorkUnit, ExecutionResult } from "./types";
 
