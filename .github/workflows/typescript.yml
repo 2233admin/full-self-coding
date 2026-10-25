@@ -18,7 +18,9 @@ jobs:
           git config --global user.name ci
           git config --global user.email ci@example.com
           git config --global init.defaultBranch main
-      - run: bun install --frozen-lockfile
+      # The tree-sitter native build (node-gyp) fails on current Node, locally and on the runner,
+      # and nothing under src/ or test/ imports it.
+      - run: bun install --frozen-lockfile --ignore-scripts
       - name: typecheck
         run: bun run typecheck
       - name: tests
