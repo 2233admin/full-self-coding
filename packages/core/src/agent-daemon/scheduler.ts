@@ -22,7 +22,7 @@
 
 import { createClient, type RedisClientType } from "redis";
 
-const REDIS_URL = Bun.env.REDIS_URL || "redis://:fsc-mesh-2026@127.0.0.1:6379";
+const REDIS_URL = Bun.env.REDIS_URL || "redis://127.0.0.1:6379";
 const POLL_INTERVAL = parseInt(Bun.env.POLL_INTERVAL || "1000");
 const MEMORY_FLOOR_MB = parseInt(Bun.env.MEMORY_FLOOR_MB || "300");
 const API_PORT = parseInt(Bun.env.API_PORT || "18800");
@@ -360,7 +360,7 @@ td{padding:8px;border-bottom:1px solid #21262d;font-size:13px}
 
 <div class="submit-form">
 <h3 style="color:#8b949e;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Submit Task</h3>
-<input id="gitUrl" placeholder="Git URL (e.g. http://...@10.10.0.1:8418/org/repo.git)" />
+<input id="gitUrl" placeholder="Git URL (e.g. https://github.com/org/repo.git)" />
 <input id="taskTitle" placeholder="Title (optional)" />
 <textarea id="taskDesc" placeholder="Description: what should the agent do?"></textarea>
 <button id="submitBtn" onclick="submitTask()">Submit Task</button>

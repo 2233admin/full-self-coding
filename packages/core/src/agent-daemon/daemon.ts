@@ -31,7 +31,7 @@ import type { TaskPayload } from "./agent";
 const NODE_ID = Bun.env.AGENT_ID || (await getHostname());
 const MAX_AGENTS = parseInt(Bun.env.MAX_AGENTS || "5");
 const MIN_AGENTS = parseInt(Bun.env.MIN_AGENTS || "2");
-const REDIS_URL = Bun.env.REDIS_URL || "redis://:fsc-mesh-2026@127.0.0.1:6379";
+const REDIS_URL = Bun.env.REDIS_URL || "redis://127.0.0.1:6379";
 const WORKSPACE = Bun.env.WORKSPACE || "/workspace";
 const ENABLE_SANDBOX = Bun.env.SANDBOX !== "false";
 const API_PORT = parseInt(Bun.env.API_PORT || "18791");

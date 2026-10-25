@@ -8,7 +8,7 @@
  *   submitTask → XADD fsc:tasks → Worker XREADGROUP → 执行 → XADD fsc:results
  *
  * 环境变量:
- *   FSC_REDIS_URL — Redis 连接 (默认 redis://:fsc-mesh-2026@10.10.0.1:6379)
+ *   FSC_REDIS_URL — Redis 连接 (默认 redis://127.0.0.1:6379)
  *   FSC_CONSUMER_GROUP — 消费组名 (默认 fsc-workers)
  */
 
@@ -17,7 +17,7 @@ import { TaskStatus } from './task';
 
 const TASK_STREAM = 'fsc:tasks';
 const RESULT_STREAM = 'fsc:results';
-const DEFAULT_REDIS_URL = 'redis://:fsc-mesh-2026@10.10.0.1:6379';
+const DEFAULT_REDIS_URL = 'redis://127.0.0.1:6379';
 
 export interface DistributedSchedulerOptions {
   redisUrl?: string;
