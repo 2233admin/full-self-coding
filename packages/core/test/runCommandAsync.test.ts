@@ -2,12 +2,7 @@ import { expect, test, describe, beforeAll, afterAll, jest } from 'bun:test';
 import { spawnSync } from "bun";
 import { DockerInstance, DockerRunStatus } from "../src/dockerInstance";
 
-const dockerAvailable = (() => {
-  try {
-    const r = spawnSync({ cmd: ["docker", "info"], timeout: 5000 });
-    return r.exitCode === 0;
-  } catch { return false; }
-})();
+import { dockerAvailable } from "./helpers/docker";
 
 const describeDocker = dockerAvailable ? describe : describe.skip;
 
