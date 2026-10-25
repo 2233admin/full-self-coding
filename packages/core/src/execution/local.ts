@@ -64,6 +64,8 @@ export class LocalExecution implements ExecutionStrategy {
           FSC_WORKTREE: worktreePath,
           ...(unit.context?.memorixUri ? { MEMORIX_URL: unit.context.memorixUri } : {}),
         },
+        // No stdin: an inherited, silent stdin makes `claude -p` wait ~3 s before it starts.
+        stdin: "ignore",
         stdout: "pipe",
         stderr: "pipe",
       });

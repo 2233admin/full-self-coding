@@ -83,3 +83,33 @@ describe("normalizeAgentType", () => {
     expect(args).toContain("--permission-mode");
   });
 });
+
+describe("claude isolation", () => {
+  const { toWorkUnitForAgent } = require("../../src/execution/mapping");
+  const task = { ID: "t", title: "x", description: "y", priority: 1 };
+
+  test("agents ignore the operator's user-level settings by default", () => {
+    const prev = process.env.FSC_CLAUDE_USER_SETTINGS;
+    delete process.env.FSC_CLAUDE_USER_SETTINGS;
+    try {
+      const args = toWorkUnitForAgent(task, "claude-code", ".").agentConfig.buildArgs("p", "/wt");
+      const i = args.indexOf("--setting-sources");
+      expect(i).toBeGreaterThan(-1);
+      expect(args[i + 1]).toBe("project,local");
+    } finally {
+      if (prev !== undefined) process.env.FSC_CLAUDE_USER_SETTINGS = prev;
+    }
+  });
+
+  test("FSC_CLAUDE_USER_SETTINGS=1 opts back in", () => {
+    const prev = process.env.FSC_CLAUDE_USER_SETTINGS;
+    process.env.FSC_CLAUDE_USER_SETTINGS = "1";
+    try {
+      const args = toWorkUnitForAgent(task, "claude-code", ".").agentConfig.buildArgs("p", "/wt");
+      expect(args).not.toContain("--setting-sources");
+    } finally {
+      if (prev === undefined) delete process.env.FSC_CLAUDE_USER_SETTINGS;
+      else process.env.FSC_CLAUDE_USER_SETTINGS = prev;
+    }
+  });
+});

@@ -63,9 +63,24 @@ export interface WorktreeInfo {
 }
 
 // Pre-built agent arg builders
+/**
+ * Agents must not inherit the operator's personal Claude Code setup: user-level hooks (a Stop hook
+ * can block or slow a headless run) and the user's global CLAUDE.md both apply by default. Measured
+ * on a trivial prompt: default 22 s and the agent recited the operator's tracker rules; with
+ * `--setting-sources project,local` 9 s and none of it. Project and local settings still apply.
+ * Set FSC_CLAUDE_USER_SETTINGS=1 to opt back in.
+ */
+export function claudeIsolationArgs(): string[] {
+  return process.env.FSC_CLAUDE_USER_SETTINGS === "1" ? [] : ["--setting-sources", "project,local"];
+}
+
 export const AGENT_BUILDERS: Record<string, AgentConfig["buildArgs"]> = {
-  claude: (prompt: string, cwd: string) =>
-    ["-p", prompt, "--allowedTools", "Edit,Write,Bash,Read,Glob,Grep", "--permission-mode", "bypassPermissions"],
+  claude: (prompt: string, _cwd: string) => [
+    "-p", prompt,
+    "--allowedTools", "Edit,Write,Bash,Read,Glob,Grep",
+    "--permission-mode", "bypassPermissions",
+    ...claudeIsolationArgs(),
+  ],
   codex: (prompt: string, cwd: string) =>
     ["exec", "--approval-mode", "full-auto", "-w", cwd, prompt],
   gemini: (prompt: string, cwd: string) =>

@@ -6,6 +6,7 @@ import { analyzerPrompt } from './prompts/analyzerPrompt';
 import { getCodingStyle } from './codingStyle';
 import { getWorkStyleDescription, WorkStyle } from './workStyle';
 import { trimJSONObjectArray } from './utils/trimJSON';
+import { claudeIsolationArgs } from './execution/types';
 
 const ALLOWED_TOOLS = 'Bash,ReadEdit,Glob,Grep,WebFetch,WebSearch,Write,TodoWrite,SlashCommand';
 const DEFAULT_TIMEOUT_SECONDS = 1200;
@@ -91,9 +92,11 @@ export async function analyzeCodebaseNative(config: Config, repoPath: string): P
         ALLOWED_TOOLS,
         '--permission-mode',
         'bypassPermissions',
+        ...claudeIsolationArgs(),
       ],
       cwd: scratch,
       env: { ...agentEnv(config), IS_SANDBOX: '1' },
+      stdin: 'ignore',
       stdout: 'pipe',
       stderr: 'pipe',
     });
