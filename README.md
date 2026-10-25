@@ -6,7 +6,7 @@
 
 Run many AI coding agents in parallel on one codebase, each in an isolated worktree, with scope contracts to keep their changes from colliding.
 
-> **Scale**: the scheduler defaults to 5 concurrent agents (worktree pool of 24) and the merge step is serial. Running hundreds or thousands of agents is a *goal*, not a measured capability; see [#10](https://github.com/2233admin/full-self-coding/issues/10).
+> **Scale**: defaults to 5 concurrent agents; merging is serial. With mock agents on one machine, 1000 independent tasks ran to completion in 7.7 minutes, and orchestration should not limit you below roughly 200 simultaneous agents. Real-agent memory, model rate limits and cost, and large repositories are not measured. Details and caveats: [docs/reports/scale-bench.md](docs/reports/scale-bench.md) (issue [#10](https://github.com/2233admin/full-self-coding/issues/10)).
 
 ## 🌟 Overview
 

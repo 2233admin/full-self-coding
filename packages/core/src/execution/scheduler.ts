@@ -8,7 +8,7 @@ import { toWorkUnitByTier, toWorkUnitForAgent, toTaskResult } from "./mapping";
 import { gitExec } from "./gitExec";
 import type { Task, TaskResult } from "../task";
 import type { CostTierStrategy } from "../modelRouter";
-import type { ExecutionResult } from "./types";
+import type { ExecutionResult, WorkUnit } from "./types";
 import { SalaciaPlugin, type SalaciaConfig } from "../salacia/plugin";
 import { ABExperiment, type ExperimentMetrics } from "../salacia/experiment";
 
@@ -18,6 +18,8 @@ export interface SchedulerConfig {
   costStrategy: CostTierStrategy;  // default "minimize-cost"
   /** Run this agent for every task instead of cost-tier routing (e.g. "claude-code"). */
   agentType?: string;
+  /** Build the work unit yourself (benchmarks and tests inject a mock agent here). */
+  unitFactory?: (task: Task, repoPath: string) => WorkUnit;
   freeclawBase?: string;
   salacia?: SalaciaConfig & {
     experiment?: { enabled: boolean; splitRatio: number };
@@ -33,6 +35,12 @@ export interface SchedulerReport {
   tasks: TaskState[];
   mergeResults: SequencerResult[];
   durationMs: number;
+  /** Time spent running agents (all tasks, wall clock). */
+  execMs?: number;
+  /** Time spent merging the finished commits onto the base branch. */
+  mergeMs?: number;
+  /** Time spent removing task worktrees and branches. */
+  cleanupMs?: number;
   zeroRegressionRate?: number;  // SWE-CI inspired: fraction of merges where ALL pre-existing tests still pass
 }
 
@@ -53,6 +61,7 @@ export class UnifiedScheduler {
   private config: SchedulerConfig;
   private stateStore: TaskStateStore;
   private pool: WorktreePool | null = null;
+  private worktrees: WorktreeManager;
   private concurrency: ConcurrencyPool;
   private execution: LocalExecution;
   private repoPath: string = "";
@@ -62,7 +71,8 @@ export class UnifiedScheduler {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.stateStore = new TaskStateStore();
     this.concurrency = new ConcurrencyPool(this.config.maxConcurrency);
-    this.execution = new LocalExecution(new WorktreeManager());
+    this.worktrees = new WorktreeManager();
+    this.execution = new LocalExecution(this.worktrees);
   }
 
   async execute(tasks: Task[], repoPath: string): Promise<SchedulerReport> {
@@ -88,6 +98,7 @@ export class UnifiedScheduler {
     // 4. Execute with concurrency control
     const executionResults: ExecutionResult[] = [];
 
+    const execStart = Date.now();
     const execPromises = tasks.map((task) =>
       this.concurrency.run(async () => {
         try {
@@ -103,7 +114,9 @@ export class UnifiedScheduler {
           this.stateStore.transition(task.ID, "dispatched");
 
           // Build work unit (with optional salacia enrichment)
-          const unit = this.config.agentType
+          const unit = this.config.unitFactory
+            ? this.config.unitFactory(task, repoPath)
+            : this.config.agentType
             ? toWorkUnitForAgent(task, this.config.agentType, repoPath, plugin)
             : toWorkUnitByTier(task, repoPath, this.config.costStrategy, this.config.freeclawBase, plugin);
           // LocalExecution creates the worktree under repoPath
@@ -121,6 +134,10 @@ export class UnifiedScheduler {
           });
 
           executionResults.push(result);
+
+          // The commit lives on the task branch; free the checkout now so live worktrees stay
+          // bounded by the concurrency limit instead of growing to the task count.
+          await this.worktrees.removeWorktree(result.worktreePath, repoPath);
 
           // Record A/B metrics
           if (experiment) {
@@ -154,10 +171,13 @@ export class UnifiedScheduler {
     );
 
     await Promise.allSettled(execPromises);
+    const execMs = Date.now() - execStart;
 
     // 4. Merge via sequencer
     const sequencer = new CommitSequencer(repoPath, this.baseBranch);
+    const mergeStart = Date.now();
     const mergeResults = await sequencer.applyAll(executionResults);
+    const mergeMs = Date.now() - mergeStart;
 
     // Post-merge regression test (SWE-CI Zero-Regression Rate)
     // MEMO-inspired: failed merges are logged to an inverse-frequency replay buffer
@@ -196,6 +216,7 @@ export class UnifiedScheduler {
     }
 
     // 5. Cleanup: task worktrees always; task branches only once their commit is on the base branch
+    const cleanupStart = Date.now();
     for (const er of executionResults) {
       gitExec(["worktree", "remove", "--force", er.worktreePath], repoPath);
       if (mergeResults.some(m => m.taskId === er.workUnitId && m.success)) {
@@ -203,6 +224,7 @@ export class UnifiedScheduler {
       }
     }
 
+    const cleanupMs = Date.now() - cleanupStart;
     const durationMs = Date.now() - startTime;
     const summary = this.stateStore.summary();
 
@@ -214,6 +236,9 @@ export class UnifiedScheduler {
       tasks: this.stateStore.list(),
       mergeResults,
       durationMs,
+      execMs,
+      mergeMs,
+      cleanupMs,
       zeroRegressionRate: mergedCount > 0 ? zeroRegressionCount / mergedCount : undefined,
     };
   }

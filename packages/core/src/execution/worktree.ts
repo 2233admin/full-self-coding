@@ -90,6 +90,19 @@ export class WorktreeManager {
   }
 
   /**
+   * Remove only the worktree directory. The branch (and the commits on it) stays, so a finished
+   * task can free its checkout right away and still be merged or recovered later.
+   */
+  async removeWorktree(worktreePath: string, repoPath: string): Promise<void> {
+    await this.mutex.acquire(30_000);
+    try {
+      gitExec(["worktree", "remove", "--force", path.resolve(worktreePath)], path.resolve(repoPath));
+    } finally {
+      this.mutex.release();
+    }
+  }
+
+  /**
    * Remove a worktree and its branch.
    */
   async remove(worktreePath: string, repoPath: string): Promise<void> {
