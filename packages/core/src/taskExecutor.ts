@@ -194,10 +194,12 @@ export class BareWorkspaceExecutor extends TaskExecutor {
 
 // ─── 工厂函数 ───
 
-export type ExecutionMode = "docker" | "bare";
+/** worktree = native git worktree per task (default); bare = clone + spawn; docker = container isolation (optional). */
+export type ExecutionMode = "worktree" | "bare" | "docker";
 
 export function createTaskExecutor(mode: ExecutionMode): TaskExecutor {
-	if (mode === "bare") {
+	if (mode !== "docker") {
+		// "worktree" is scheduled by TaskSolverManager.startWorktreeMode; per-task fallback is native too.
 		return new BareWorkspaceExecutor();
 	}
 	// Docker mode: 动态导入原 DockerInstance 并包装为 TaskExecutor

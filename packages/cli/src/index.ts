@@ -142,7 +142,7 @@ export function createCLI(): Command {
     .command('run')
     .description('Run the full self-coding analysis and task execution')
     .option('-c, --config <path>', 'Path to configuration file')
-    .option('--mode <mode>', 'Execution mode (docker|bare|worktree)', 'bare')
+    .option('--mode <mode>', 'Execution mode: worktree (native git worktree), bare, or docker (optional)', 'worktree')
     .action(async (options) => {
       try {
         // If config option is provided, add it to process.argv for the main function to pick up

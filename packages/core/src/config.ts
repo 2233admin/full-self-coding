@@ -143,8 +143,9 @@ export interface Config {
     customizedMessage?: string;
 
     /**
-     * Execution mode: 'docker' (container isolation) or 'bare' (git clone + Bun.spawn)
-     * @default 'docker'
+     * Execution mode: 'worktree' (native git worktree, default), 'bare' (git clone + Bun.spawn)
+     * or 'docker' (container isolation, optional)
+     * @default 'worktree'
      */
     executionMode?: ExecutionMode;
 
@@ -222,7 +223,7 @@ export interface Config {
 export const DEFAULT_CONFIG: Config = {
     agentType: SWEAgentType.CLAUDE_CODE,
     maxDockerContainers: 10,
-    executionMode: 'docker',
+    executionMode: 'worktree',
     dockerImageRef: 'node:latest',
     maxParallelDockerContainers: 10,
     dockerTimeoutSeconds: 300000,
@@ -233,7 +234,7 @@ export const DEFAULT_CONFIG: Config = {
     workStyle: WorkStyle.DEFAULT,
     codingStyleLevel: 0,
     // Harness defaults
-    harnessMode: 'docker',
+    harnessMode: 'local',
     maxParallelAgents: 1,
     progressDir: './',
     enableProgrammaticToolCalling: false,

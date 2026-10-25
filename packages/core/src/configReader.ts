@@ -362,6 +362,14 @@ export class ConfigReader {
 
         const configWithEnv = { ...baseConfig };
 
+        const mode = process.env.FSC_EXECUTION_MODE;
+        if (mode !== undefined) {
+            if (mode !== 'worktree' && mode !== 'bare' && mode !== 'docker') {
+                throw new Error(`FSC_EXECUTION_MODE must be worktree, bare or docker (got "${mode}")`);
+            }
+            configWithEnv.executionMode = mode;
+        }
+
         // Apply environment variable overrides
         for (const [envVar, configKey] of Object.entries(envMappings)) {
             const envValue = process.env[envVar];
