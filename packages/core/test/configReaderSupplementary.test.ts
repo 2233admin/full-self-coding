@@ -179,3 +179,24 @@ describe('ConfigReader with Supplementary Configuration', () => {
         expect(config.customizedWorkStyle).toBe(undefined); // Should not have supplementary config values
     });
 });
+describe("executionMode", () => {
+  test("defaults to the native worktree mode", async () => {
+    const { DEFAULT_CONFIG } = await import("../src/config");
+    expect(DEFAULT_CONFIG.executionMode).toBe("worktree");
+    expect(DEFAULT_CONFIG.harnessMode).toBe("local");
+  });
+
+  test("FSC_EXECUTION_MODE overrides the config and is validated", async () => {
+    const { readConfigWithEnv } = await import("../src/configReader");
+    const prev = process.env.FSC_EXECUTION_MODE;
+    try {
+      process.env.FSC_EXECUTION_MODE = "docker";
+      expect(readConfigWithEnv().executionMode).toBe("docker");
+      process.env.FSC_EXECUTION_MODE = "nope";
+      expect(() => readConfigWithEnv()).toThrow(/FSC_EXECUTION_MODE/);
+    } finally {
+      if (prev === undefined) delete process.env.FSC_EXECUTION_MODE;
+      else process.env.FSC_EXECUTION_MODE = prev;
+    }
+  });
+});

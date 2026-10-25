@@ -63,7 +63,7 @@ export class TaskSolverManager {
 
     async start() {
         // Worktree mode: bypass Docker/bare scheduler
-        if ((this.config as any).executionMode === 'worktree') {
+        if (this.config.executionMode === 'worktree') {
             await this.startWorktreeMode();
             return;
         }

@@ -28,7 +28,7 @@ export class TaskSolver {
         this.agentType = agentType;
         this.gitURL = gitURL;
         this.referenceContext = referenceContext || "";
-        this.executor = createTaskExecutor(config.executionMode || 'docker');
+        this.executor = createTaskExecutor(config.executionMode || 'worktree');
         this.containerName = "";
     }
 

@@ -38,17 +38,18 @@ Full Self Coding (FSC) is a sophisticated framework designed to automate softwar
 
 ### Execution Modes
 
-FSC supports two execution modes — choose based on your environment:
+FSC runs agents as native processes by default. Docker is an optional isolation mode, not a requirement.
 
 | Mode | Isolation | Overhead | Best For |
 |------|-----------|----------|----------|
-| **Docker** | Full container isolation | ~200MB/agent | Production, untrusted code |
-| **bare** (WorktreeExecutor) | Git worktree | ~0 | Development, testing, resource-constrained servers |
+| **worktree** (default) | One native git worktree per task, agent runs as a normal process | ~0 | Everyday use, many parallel agents |
+| **bare** | Fresh git clone + spawned process | disk only | When worktrees are not suitable |
+| **docker** (optional) | Full container isolation | ~200MB/agent | Untrusted code |
 
-Configure via `.fsc/config.json`:
+Select with `--mode`, the `FSC_EXECUTION_MODE` environment variable, or `.fsc/config.json`:
 ```json
 {
-  "executionMode": "bare"
+  "executionMode": "worktree"
 }
 ```
 
