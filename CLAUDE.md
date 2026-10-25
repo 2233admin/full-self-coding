@@ -3,7 +3,7 @@
 # CLAUDE.md — full-self-coding (FSC)
 
 ## 项目概述
-FSC 核心引擎: 把代码任务拆解成原子级子任务，分发给多个 Agent 并行执行 (目标 100~1000, 尚无压测数据, 见 issue #10; 现状默认并发 5, 合并串行)。
+FSC 核心引擎: 把代码任务拆解成原子级子任务，分发给多个 Agent 并行执行 (mock agent 实测 1000 个独立任务可跑完, 见 docs/reports/scale-bench.md; 真实 agent 的内存/限流/费用未测; 默认并发 5, 合并串行)。
 类比 GPU 并行计算 — CUDA Cores 换成 AI Agent 容器。
 
 ## 架构
