@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import {
   analyzeCodebase,
   analyzeCodebaseNative,
+  ignoreStateDir,
   UnifiedScheduler,
   TaskSolverManager,
   DistributedScheduler,
@@ -75,11 +76,25 @@ export async function runFullAnalysis(): Promise<void> {
   }
 
   // Step 1: analyze the codebase and get tasks
-  console.log('Analyzing the codebase...');
-  const tasks: Task[] =
-    mode === 'docker'
-      ? await analyzeCodebase(config, gitRemoteUrl)
-      : await analyzeCodebaseNative(config, process.cwd());
+  if (mode !== 'docker') ignoreStateDir(process.cwd());
+  const tasksFile = process.env.FSC_TASKS_FILE;
+  let tasks: Task[];
+  if (tasksFile) {
+    // Skip analysis: run exactly the tasks in this JSON file (an array of Task objects).
+    try {
+      tasks = JSON.parse(fs.readFileSync(tasksFile, 'utf-8'));
+    } catch (e) {
+      throw new Error(`Cannot read tasks from ${tasksFile}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (!Array.isArray(tasks) || tasks.length === 0) throw new Error(`${tasksFile} must contain a non-empty JSON array of tasks.`);
+    tasks = tasks.map((t, i) => ({ ...t, priority: t.priority ?? 1, ID: t.ID ?? `task-${i + 1}` }));
+  } else {
+    console.log('Analyzing the codebase...');
+    tasks =
+      mode === 'docker'
+        ? await analyzeCodebase(config, gitRemoteUrl)
+        : await analyzeCodebaseNative(config, process.cwd());
+  }
   console.log(`Found ${tasks.length} task(s):`);
   for (const t of tasks) console.log(`  - [P${t.priority}] ${t.title}`);
 
@@ -179,12 +194,16 @@ export function createCLI(): Command {
     .command('run')
     .description('Run the full self-coding analysis and task execution')
     .option('-c, --config <path>', 'Path to configuration file')
+    .option('--tasks <file>', 'Run the tasks in this JSON file instead of analyzing the codebase')
     .option('--mode <mode>', 'Execution mode: worktree (native git worktree), bare, or docker (optional)', 'worktree')
     .action(async (options) => {
       try {
         // If config option is provided, add it to process.argv for the main function to pick up
         if (options.config) {
           process.argv.push('--config', options.config);
+        }
+        if (options.tasks) {
+          process.env.FSC_TASKS_FILE = options.tasks;
         }
         if (options.mode) {
           process.env.FSC_EXECUTION_MODE = options.mode;
