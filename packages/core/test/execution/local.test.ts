@@ -86,6 +86,35 @@ describe("LocalExecution", () => {
     expect(result.filesChanged).toContain("auto_commit_test.txt");
   });
 
+  test("interpreter byproducts alone are not a result", async () => {
+    const shell = process.platform === "win32" ? "bash" : "/bin/sh";
+    const unit: WorkUnit = {
+      id: "local-test-pyc-only",
+      repoPath: testRepo,
+      baseBranch: "main",
+      taskPrompt: "test",
+      agentConfig: {
+        type: "custom",
+        costTier: "free",
+        memoryMB: 50,
+        command: shell,
+        buildArgs: () => ["-c", "mkdir -p __pycache__ && echo x > __pycache__/a.cpython-312.pyc"],
+      },
+      constraints: { timeoutMs: 10_000 },
+    };
+
+    const result = await execution.execute(unit);
+    expect(result.commitHash).toBeNull();
+    expect(result.status).toBe("failure");
+    expect(result.error?.message).toContain("no changes");
+  });
+
+  test("agent output is kept in the repo's .fsc/logs", async () => {
+    const log = path.resolve(testRepo, ".fsc", "logs", "local-test-pyc-only.log");
+    expect(fs.existsSync(log)).toBe(true);
+    expect(fs.readFileSync(log, "utf-8")).toContain("# exit=0");
+  });
+
   test("handles timeout", async () => {
     const shell = process.platform === "win32" ? "bash" : "/bin/sh";
     const unit: WorkUnit = {
