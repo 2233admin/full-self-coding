@@ -4,7 +4,9 @@
 
 **原版**: https://github.com/NO-CHATBOT-REVOLUTION/full-self-coding
 
-No prompts, no instructions, no plans, you have 100~1000 AI agent coding in parallel now, solving all possible problems and issues in your codebase.
+Run many AI coding agents in parallel on one codebase, each in an isolated worktree, with scope contracts to keep their changes from colliding.
+
+> **Scale**: the scheduler defaults to 5 concurrent agents (worktree pool of 24) and the merge step is serial. Running hundreds or thousands of agents is a *goal*, not a measured capability; see [#10](https://github.com/2233admin/full-self-coding/issues/10).
 
 ## 🌟 Overview
 
