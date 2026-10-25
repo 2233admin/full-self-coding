@@ -16,6 +16,7 @@ sha2 = "0.10"
 tempfile = "3"
 fsc-core = { path = "crates/fsc-core" }
 fsc-scope = { path = "crates/fsc-scope" }
+fsc-merge = { path = "crates/fsc-merge" }
 
 [workspace.lints.clippy]
 all = { level = "deny", priority = -1 }

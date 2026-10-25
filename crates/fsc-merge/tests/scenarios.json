@@ -1,0 +1,171 @@
+[
+  {
+    "name": "tier1_clean",
+    "target": "main",
+    "steps": [
+      { "write": ["shared.txt", "line1\nline2\nline3\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "initial"] },
+      { "git": ["checkout", "-q", "-b", "agent"] },
+      { "write": ["new-file.txt", "no conflict"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "task"] },
+      { "rev": "h" },
+      { "git": ["checkout", "-q", "main"] }
+    ],
+    "applies": [{ "id": "t1", "hash": "${h}", "branch": "agent" }],
+    "inspect": ["new-file.txt", "shared.txt"]
+  },
+  {
+    "name": "no_commit_hash",
+    "target": "main",
+    "steps": [
+      { "write": ["a.txt", "a"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "initial"] }
+    ],
+    "applies": [{ "id": "t1", "hash": null, "branch": "agent" }],
+    "inspect": ["a.txt"]
+  },
+  {
+    "name": "already_merged",
+    "target": "main",
+    "steps": [
+      { "write": ["a.txt", "a"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "initial"] },
+      { "rev": "h" }
+    ],
+    "applies": [{ "id": "t1", "hash": "${h}", "branch": "agent" }],
+    "inspect": ["a.txt"]
+  },
+  {
+    "name": "missing_commit",
+    "target": "main",
+    "steps": [
+      { "write": ["a.txt", "a"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "initial"] }
+    ],
+    "applies": [{ "id": "t1", "hash": "0123456789abcdef0123456789abcdef01234567", "branch": "agent" }],
+    "inspect": ["a.txt"]
+  },
+  {
+    "name": "dirty_tree",
+    "target": "main",
+    "steps": [
+      { "write": ["a.txt", "a"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "initial"] },
+      { "git": ["checkout", "-q", "-b", "agent"] },
+      { "write": ["new-file.txt", "x"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "task"] },
+      { "rev": "h" },
+      { "git": ["checkout", "-q", "main"] },
+      { "write": ["dirty.txt", "untracked"] }
+    ],
+    "applies": [{ "id": "t1", "hash": "${h}", "branch": "agent" }],
+    "inspect": ["dirty.txt"]
+  },
+  {
+    "name": "tier2_blocked_contentful_canonical",
+    "target": "main",
+    "steps": [
+      { "write": ["conflict.txt", "original content\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "base"] },
+      { "rev": "base" },
+      { "write": ["conflict.txt", "main's important change\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "main change"] },
+      { "git": ["checkout", "-q", "-b", "agent", "${base}"] },
+      { "write": ["conflict.txt", "agent's different change\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "agent change"] },
+      { "rev": "h" },
+      { "git": ["checkout", "-q", "main"] }
+    ],
+    "applies": [{ "id": "t1", "hash": "${h}", "branch": "agent" }],
+    "inspect": ["conflict.txt"],
+    "history_files": ["conflict.txt"],
+    "start_tier_files": ["conflict.txt"]
+  },
+  {
+    "name": "tier2_resolved_empty_canonical",
+    "target": "main",
+    "steps": [
+      { "write": ["f.txt", "a\nb\nc\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "base"] },
+      { "git": ["checkout", "-q", "-b", "agent"] },
+      { "write": ["f.txt", "a\nB2\nc\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "agent modifies b"] },
+      { "rev": "h" },
+      { "git": ["checkout", "-q", "main"] },
+      { "write": ["f.txt", "a\nc\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "main deletes b"] }
+    ],
+    "applies": [{ "id": "t1", "hash": "${h}", "branch": "agent" }],
+    "inspect": ["f.txt"],
+    "history_files": ["f.txt"]
+  },
+  {
+    "name": "mixed_conflicts_blocked_twice",
+    "target": "main",
+    "steps": [
+      { "write": ["f1.txt", "a\nb\nc\n"] },
+      { "write": ["f2.txt", "a\nb\nc\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "base"] },
+      { "git": ["checkout", "-q", "-b", "agent"] },
+      { "write": ["f1.txt", "a\nB2\nc\n"] },
+      { "write": ["f2.txt", "a\nX2\nc\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "agent"] },
+      { "rev": "h" },
+      { "git": ["checkout", "-q", "main"] },
+      { "write": ["f1.txt", "a\nc\n"] },
+      { "write": ["f2.txt", "a\nb-main\nc\n"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "main"] }
+    ],
+    "applies": [
+      { "id": "t1", "hash": "${h}", "branch": "agent" },
+      { "id": "t2", "hash": "${h}", "branch": "agent" }
+    ],
+    "inspect": ["f1.txt", "f2.txt"],
+    "history_files": ["f1.txt", "f2.txt"],
+    "start_tier_files": ["f1.txt", "f2.txt"]
+  },
+  {
+    "name": "apply_all_sorts_and_filters",
+    "target": "main",
+    "mode": "all",
+    "steps": [
+      { "write": ["base.txt", "base"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "base"] },
+      { "git": ["checkout", "-q", "-b", "agent-b"] },
+      { "write": ["b.txt", "b"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "b"] },
+      { "rev": "hb" },
+      { "git": ["checkout", "-q", "main"] },
+      { "git": ["checkout", "-q", "-b", "agent-a"] },
+      { "write": ["a.txt", "a"] },
+      { "git": ["add", "-A"] },
+      { "git": ["commit", "-q", "-m", "a"] },
+      { "rev": "ha" },
+      { "git": ["checkout", "-q", "main"] }
+    ],
+    "applies": [
+      { "id": "b", "hash": "${hb}", "branch": "agent-b" },
+      { "id": "z-no-commit", "hash": null, "branch": "none" },
+      { "id": "a", "hash": "${ha}", "branch": "agent-a" }
+    ],
+    "inspect": ["a.txt", "b.txt"]
+  }
+]
