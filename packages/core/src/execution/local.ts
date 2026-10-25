@@ -10,6 +10,14 @@ import type { SalaciaPlugin } from "../salacia/plugin";
 
 const FSC_AUTHOR = "FSC Worker <fsc@full-self-coding>";
 
+/** Never auto-committed: FSC state and build/interpreter byproducts that agents leave behind. */
+const AUTO_COMMIT_EXCLUDES = [
+  ":(exclude).fsc",
+  ":(exclude)**/__pycache__/**",
+  ":(exclude)**/*.pyc",
+  ":(exclude)**/node_modules/**",
+];
+
 export class LocalExecution implements ExecutionStrategy {
   private worktreeManager: WorktreeManager;
   private running: Map<string, Subprocess> = new Map();
@@ -155,6 +163,28 @@ export class LocalExecution implements ExecutionStrategy {
       } : undefined,
     };
 
+    // Keep the full agent output: the worktree (and its .fsc/) is removed after the run.
+    try {
+      const logDir = path.resolve(unit.repoPath, ".fsc", "logs");
+      fs.mkdirSync(logDir, { recursive: true });
+      const header = `# exit=${exitCode} timedOut=${timedOut} spawnError=${spawnError ?? ""}`;
+      const shown = cmd.map(c => (c.length > 80 ? `${c.slice(0, 80)}...` : c)).join(" ");
+      const body = [
+        header,
+        `# cmd: ${shown}`,
+        "",
+        "## stdout",
+        stdoutChunks.join("\n"),
+        "",
+        "## stderr",
+        stderrChunks.join("\n"),
+        "",
+      ].join("\n");
+      fs.writeFileSync(path.resolve(logDir, `${unit.id}.log`), body);
+    } catch {
+      // logging must never fail a run
+    }
+
     // 8. Write .fsc/result.json
     fs.writeFileSync(
       path.resolve(fscDir, "result.json"),
@@ -191,10 +221,10 @@ export class LocalExecution implements ExecutionStrategy {
     baseBranch: string,
   ): string | null {
     // Check for uncommitted changes (exclude .fsc/ which is FSC internal)
-    const status = gitExec(["status", "--porcelain", "--", ":(exclude).fsc"], worktreePath);
+    const status = gitExec(["status", "--porcelain", "--", ".", ...AUTO_COMMIT_EXCLUDES], worktreePath);
     if (status.stdout.trim()) {
       // Auto-commit (add everything except .fsc/)
-      gitExec(["add", "-A", "--", ":(exclude).fsc"], worktreePath);
+      gitExec(["add", "-A", "--", ".", ...AUTO_COMMIT_EXCLUDES], worktreePath);
       const commitResult = gitExec(
         ["commit", "--author", FSC_AUTHOR, "-m", `auto: ${taskId} completion`],
         worktreePath,

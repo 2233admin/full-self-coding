@@ -16,7 +16,7 @@ function git(args: string[], cwd: string): { ok: boolean; out: string } {
 }
 
 /** Keep our `.fsc/` runtime state out of `git status` without touching the user's .gitignore. */
-function ignoreStateDir(repo: string): void {
+export function ignoreStateDir(repo: string): void {
   const p = git(['rev-parse', '--git-path', 'info/exclude'], repo);
   if (!p.ok) return;
   const file = resolve(repo, p.out.trim());
