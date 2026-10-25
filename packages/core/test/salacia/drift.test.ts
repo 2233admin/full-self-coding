@@ -8,6 +8,7 @@ function makeContract(overrides: Partial<ExecutionContract> = {}): ExecutionCont
     allowedPaths: ["packages/core/src/execution/**"],
     excludedPaths: ["node_modules/**", ".git/**", "dist/**"],
     protectedPaths: [".env", "package-lock.json"],
+    softAllowedPaths: [],
     maxFilesChanged: 5,
     generatedAt: Date.now(),
     generatedBy: "heuristic",

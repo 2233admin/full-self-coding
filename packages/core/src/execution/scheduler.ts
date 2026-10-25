@@ -171,7 +171,7 @@ export class UnifiedScheduler {
     let mergedCount = 0;
     if (salaciaConfig?.postMergeTest) {
       for (const mr of mergeResults) {
-        if (mr.status === "merged") {
+        if (mr.success) {
           mergedCount++;
           const testResult = Bun.spawnSync({ cmd: ["bun", "test"], cwd: repoPath, timeout: 120_000 });
           const pass = testResult.exitCode === 0;
@@ -194,7 +194,7 @@ export class UnifiedScheduler {
       let replay: Record<string, number> = {};
       try { replay = JSON.parse(require("fs").readFileSync(replayPath, "utf-8")); } catch {}
       for (const mr of mergeResults) {
-        if (mr.status === "merged") {
+        if (mr.success) {
           const existing = experiment?.["metrics"]?.find((m: any) => m.taskId === mr.taskId);
           if (existing && !existing.postMergeTestPass) {
             replay[mr.taskId] = (replay[mr.taskId] || 0) + 1;

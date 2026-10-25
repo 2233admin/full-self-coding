@@ -188,3 +188,6 @@ AGENTS.md
 providers.json
 
 .grit
+
+# oh-my-codex runtime state (not source)
+.omx/

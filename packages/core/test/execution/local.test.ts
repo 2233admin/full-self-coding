@@ -48,6 +48,8 @@ describe("LocalExecution", () => {
       taskPrompt: "test prompt",
       agentConfig: {
         type: "custom",
+        costTier: "free",
+        memoryMB: 50,
         command: shell,
         buildArgs: () => ["-c", 'echo "hello" > test_output.txt && git add -A && git commit --author "Test <t@t>" -m "agent commit"'],
       },
@@ -69,6 +71,8 @@ describe("LocalExecution", () => {
       taskPrompt: "test",
       agentConfig: {
         type: "custom",
+        costTier: "free",
+        memoryMB: 50,
         command: shell,
         // Agent creates file but does NOT commit
         buildArgs: () => ["-c", 'echo "uncommitted" > auto_commit_test.txt'],
@@ -91,6 +95,8 @@ describe("LocalExecution", () => {
       taskPrompt: "test",
       agentConfig: {
         type: "custom",
+        costTier: "free",
+        memoryMB: 50,
         command: shell,
         buildArgs: () => ["-c", "sleep 30"],
       },
@@ -110,6 +116,8 @@ describe("LocalExecution", () => {
       taskPrompt: "test",
       agentConfig: {
         type: "custom",
+        costTier: "free",
+        memoryMB: 50,
         command: shell,
         buildArgs: () => ["-c", "echo 'no changes'"],
       },

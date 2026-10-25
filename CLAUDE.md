@@ -18,7 +18,7 @@ FSC 核心引擎: 把代码任务拆解成原子级子任务，分发给 100~100
 - Docker 容器 < 200MB (极简化)
 - 每任务 < 4000 tokens
 - Worker 优先用廉价模型 (MiniMax/Doubao)
-- 测试: bun test
+- 测试: bun test; 提交前 `bun run check` (tsc + test)
 
 ## 编码规范
 - TypeScript strict mode
@@ -33,6 +33,9 @@ FSC 核心引擎: 把代码任务拆解成原子级子任务，分发给 100~100
 - `packages/core/src/dockerInstance.ts` — 容器管理
 - `packages/core/src/codeCommitter.ts` — Git 提交
 - `packages/core/src/SWEAgent/` — Agent 适配器
+- `packages/core/src/execution/` — v3 worktree 流水线 (UnifiedScheduler/CommitSequencer), 新功能放这里
+- `packages/core/src/salacia/` — 范围合同 + drift 评分
+- `MODULE_STRUCTURE.md` — 子系统状态与 import 规则 (由 `test/architecture.test.ts` 强制)
 - `packages/cli/src/index.ts` — CLI 入口
 - `cluster_config.example.json` — 集群配置模板
 - `auto_deploy.py` — 集群部署脚本

@@ -1,6 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { spawnSync } from "bun";
 import { DockerInstance } from "../src/dockerInstance";
+import { RunStatus } from "../src/taskExecutor";
 
 const dockerAvailable = (() => {
   try {
@@ -39,7 +40,7 @@ testDocker("DockerInstance copyFilesToContainer basic functionality", async () =
         // Verify file was copied and has correct content
         const result = await instance.runCommands(["cat /workspace/test.txt"], 30);
 
-        expect(result.status).toBe("success");
+        expect(result.status).toBe(RunStatus.SUCCESS);
         expect(result.output).toContain("Hello, this is a test file!");
 
         console.log("✅ Basic copyFilesToContainer test passed!");

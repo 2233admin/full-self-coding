@@ -11,8 +11,8 @@
     "start": "cd packages/cli && bun run start",
     "test": "cd packages/core && bun run test",
     "clean": "rm -rf node_modules && rm -rf packages/*/node_modules",
-    "legacy:build": "bun build ./src/main.ts --target bun --outdir dist --sourcemap",
-    "legacy:start": "bun src/main.ts"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check": "bun run typecheck && bun run test"
   },
   "devDependencies": {
     "@types/bun": "^1.3.10",
