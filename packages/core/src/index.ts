@@ -2,6 +2,7 @@
 
 // Main engines
 export { default as analyzeCodebase } from './analyzer';
+export { analyzeCodebaseNative } from './analyzerNative';
 export { TaskSolver } from './taskSolver';
 export { TaskSolverManager } from './taskSolverManager';
 export { CodeCommitter, type QualityGateHook, type TrustUpdateHook } from './codeCommitter';

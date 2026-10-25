@@ -102,7 +102,7 @@ export class ConfigReader {
                 if (this.throwOnMissing) {
                     throw new Error(`Configuration file not found at: ${this.configPath}`);
                 }
-                console.warn(`Configuration file not found at: ${this.configPath}. Using default configuration.`);
+                // No user config file is the normal first-run state; defaults apply silently.
             }
 
             // Read supplementary project-level config if it exists and is enabled
@@ -257,12 +257,10 @@ export class ConfigReader {
             const supplementaryConfigPath = path.resolve(process.cwd(), '.fsc', 'config.json');
 
             if (!fs.existsSync(supplementaryConfigPath)) {
-                console.log(`Supplementary configuration file not found at: ${supplementaryConfigPath}`);
                 return {};
             }
 
-            console.log(`Reading supplementary configuration from: ${supplementaryConfigPath}`);
-
+            
             // Read and parse the supplementary config file
             const fileContent = fs.readFileSync(supplementaryConfigPath, 'utf8');
             const parsedConfig = JSON.parse(fileContent);

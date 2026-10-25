@@ -247,9 +247,17 @@ impl CommitSequencer {
     }
 
     fn pre_merge_check(&self, hash: &str) -> PreMerge {
-        // `.fsc/` is our own runtime state (merge-history.json); it must not make the tree dirty.
+        // Only tracked changes make the tree dirty: untracked files (logs, `.fsc/` state) do not
+        // block a cherry-pick, and git itself refuses if one would be overwritten.
         let status = git(
-            &["status", "--porcelain", "--", ".", ":(exclude).fsc"],
+            &[
+                "status",
+                "--porcelain",
+                "--untracked-files=no",
+                "--",
+                ".",
+                ":(exclude).fsc",
+            ],
             &self.repo,
         );
         if !status.stdout.trim().is_empty() {

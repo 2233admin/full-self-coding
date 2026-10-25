@@ -322,8 +322,8 @@
       },
       {
         "write": [
-          "dirty.txt",
-          "untracked"
+          "a.txt",
+          "locally modified"
         ]
       }
     ],
@@ -335,7 +335,7 @@
       }
     ],
     "inspect": [
-      "dirty.txt"
+      "a.txt"
     ],
     "expected": {
       "results": [
@@ -348,7 +348,107 @@
         }
       ],
       "files": {
-        "dirty.txt": "untracked"
+        "a.txt": "locally modified"
+      },
+      "history": {},
+      "startTiers": {},
+      "porcelainClean": false,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "untracked_files_do_not_block",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "a.txt",
+          "a"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "initial"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent"
+        ]
+      },
+      {
+        "write": [
+          "new-file.txt",
+          "x"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "task"
+        ]
+      },
+      {
+        "rev": "h"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      },
+      {
+        "write": [
+          "run.log",
+          "untracked noise"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "${h}",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "new-file.txt",
+      "run.log"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": true,
+          "resolvedTier": 1,
+          "error": null,
+          "hasCommitHash": true
+        }
+      ],
+      "files": {
+        "new-file.txt": "x",
+        "run.log": "untracked noise"
       },
       "history": {},
       "startTiers": {},

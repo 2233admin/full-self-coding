@@ -38,6 +38,49 @@ export function buildTaskPrompt(task: Task): string {
   return prompt;
 }
 
+/** Map config / CLI agent names to AGENT_CATALOG keys. Unknown names are an error, not a fallback. */
+export function normalizeAgentType(name: string): string {
+  const aliases: Record<string, string> = {
+    "claude-code": "claude",
+    "gemini-cli": "gemini",
+  };
+  const key = aliases[name] ?? name;
+  if (!(key in AGENT_CATALOG) || !(key in AGENT_BUILDERS)) {
+    const supported = Object.keys(AGENT_CATALOG).filter(k => k in AGENT_BUILDERS).join(", ");
+    throw new Error(`Unsupported agent "${name}" for worktree execution. Supported: ${supported}.`);
+  }
+  return key;
+}
+
+/** Work unit that runs a specific agent (no cost-tier routing). */
+export function toWorkUnitForAgent(
+  task: Task,
+  agentName: string,
+  repoPath: string,
+  salaciaPlugin?: SalaciaPlugin,
+): WorkUnit {
+  const type = normalizeAgentType(agentName);
+  const catalog = AGENT_CATALOG[type];
+  const unit: WorkUnit = {
+    id: task.ID,
+    repoPath,
+    baseBranch: getCurrentBranch(repoPath),
+    taskPrompt: buildTaskPrompt(task),
+    agentConfig: {
+      type: type as AgentType,
+      command: catalog.command,
+      buildArgs: AGENT_BUILDERS[type],
+      costTier: catalog.costTier as CostTier,
+      memoryMB: catalog.memoryMB,
+    },
+    constraints: {
+      timeoutMs: task.maxExecutionTimeMs ?? 900_000,
+      maxTokens: task.estimatedTokens,
+    },
+  };
+  return salaciaPlugin ? salaciaPlugin.enrichWorkUnit(unit, task) : unit;
+}
+
 export function toWorkUnit(
   task: Task,
   config: Config,

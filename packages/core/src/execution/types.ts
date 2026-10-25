@@ -65,7 +65,7 @@ export interface WorktreeInfo {
 // Pre-built agent arg builders
 export const AGENT_BUILDERS: Record<string, AgentConfig["buildArgs"]> = {
   claude: (prompt: string, cwd: string) =>
-    ["-p", prompt, "--cwd", cwd, "--allowedTools", "Edit,Write,Bash,Read,Glob,Grep"],
+    ["-p", prompt, "--allowedTools", "Edit,Write,Bash,Read,Glob,Grep", "--permission-mode", "bypassPermissions"],
   codex: (prompt: string, cwd: string) =>
     ["exec", "--approval-mode", "full-auto", "-w", cwd, prompt],
   gemini: (prompt: string, cwd: string) =>

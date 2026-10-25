@@ -60,3 +60,26 @@ describe("buildTaskPrompt", () => {
     expect(prompt).toContain("Commit your changes");
   });
 });
+
+describe("normalizeAgentType", () => {
+  const { normalizeAgentType, toWorkUnitForAgent } = require("../../src/execution/mapping");
+
+  test("maps config names to catalog keys", () => {
+    expect(normalizeAgentType("claude-code")).toBe("claude");
+    expect(normalizeAgentType("gemini-cli")).toBe("gemini");
+    expect(normalizeAgentType("codex")).toBe("codex");
+  });
+
+  test("unknown agents are an error, not a silent fallback to another agent", () => {
+    expect(() => normalizeAgentType("cursor")).toThrow(/Unsupported agent/);
+    expect(() => normalizeAgentType("nope")).toThrow(/Supported:/);
+  });
+
+  test("claude is launched unattended and without the nonexistent --cwd flag", () => {
+    const unit = toWorkUnitForAgent({ ID: "t", title: "x", description: "y", priority: 1 }, "claude-code", ".");
+    expect(unit.agentConfig.command).toBe("claude");
+    const args = unit.agentConfig.buildArgs("do it", "/wt");
+    expect(args).not.toContain("--cwd");
+    expect(args).toContain("--permission-mode");
+  });
+});

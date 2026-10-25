@@ -46,6 +46,8 @@ export interface Config {
      */
     anthropicAPIKey?: string;
     anthropicAPIKeyExportNeeded?: boolean;
+    /** Native analysis time limit in seconds (default 1200). */
+    analysisTimeoutSeconds?: number;
     anthropicAPIBaseUrl?: string;
 
     /**
@@ -186,6 +188,8 @@ export interface Config {
      * @default 1
      */
     maxParallelAgents?: number;
+    /** Native (worktree) mode: how many agents run at once. Default 5. */
+    maxParallelWorktrees?: number;
 
     /**
      * Directory where progress.txt and agent lock files are stored.
