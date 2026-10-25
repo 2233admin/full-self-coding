@@ -239,7 +239,8 @@ export class CommitSequencer {
   // ── Safety Checks ──────────────────────────────────────────────
 
   private preMergeChecks(commitHash: string): string | null {
-    const status = gitExec(["status", "--porcelain"], this.repoPath);
+    // .fsc/ is our own runtime state (merge-history.json); it must not make the tree "dirty"
+    const status = gitExec(["status", "--porcelain", "--", ".", ":(exclude).fsc"], this.repoPath);
     if (status.stdout.trim()) return "working tree is dirty";
 
     const exists = gitExec(["cat-file", "-t", commitHash], this.repoPath);

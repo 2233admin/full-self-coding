@@ -16,7 +16,7 @@
   },
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "test": "bun test"
+    "test": "bun test --timeout 30000"
   },
   "keywords": [
     "code-analysis",

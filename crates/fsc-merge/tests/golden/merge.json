@@ -1,0 +1,938 @@
+[
+  {
+    "name": "tier1_clean",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "shared.txt",
+          "line1\nline2\nline3\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "initial"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent"
+        ]
+      },
+      {
+        "write": [
+          "new-file.txt",
+          "no conflict"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "task"
+        ]
+      },
+      {
+        "rev": "h"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "${h}",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "new-file.txt",
+      "shared.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": true,
+          "resolvedTier": 1,
+          "error": null,
+          "hasCommitHash": true
+        }
+      ],
+      "files": {
+        "new-file.txt": "no conflict",
+        "shared.txt": "line1\nline2\nline3\n"
+      },
+      "history": {},
+      "startTiers": {},
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "no_commit_hash",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "a.txt",
+          "a"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "initial"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": null,
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "a.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": true,
+          "resolvedTier": null,
+          "error": "no changes",
+          "hasCommitHash": false
+        }
+      ],
+      "files": {
+        "a.txt": "a"
+      },
+      "history": {},
+      "startTiers": {},
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "already_merged",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "a.txt",
+          "a"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "initial"
+        ]
+      },
+      {
+        "rev": "h"
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "${h}",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "a.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": true,
+          "resolvedTier": null,
+          "error": "already merged",
+          "hasCommitHash": true
+        }
+      ],
+      "files": {
+        "a.txt": "a"
+      },
+      "history": {},
+      "startTiers": {},
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "missing_commit",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "a.txt",
+          "a"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "initial"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "0123456789abcdef0123456789abcdef01234567",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "a.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": false,
+          "resolvedTier": null,
+          "error": "commit <hash> does not exist",
+          "hasCommitHash": false
+        }
+      ],
+      "files": {
+        "a.txt": "a"
+      },
+      "history": {},
+      "startTiers": {},
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "dirty_tree",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "a.txt",
+          "a"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "initial"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent"
+        ]
+      },
+      {
+        "write": [
+          "new-file.txt",
+          "x"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "task"
+        ]
+      },
+      {
+        "rev": "h"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      },
+      {
+        "write": [
+          "dirty.txt",
+          "untracked"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "${h}",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "dirty.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": false,
+          "resolvedTier": null,
+          "error": "working tree is dirty",
+          "hasCommitHash": false
+        }
+      ],
+      "files": {
+        "dirty.txt": "untracked"
+      },
+      "history": {},
+      "startTiers": {},
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "tier2_blocked_contentful_canonical",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "conflict.txt",
+          "original content\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "base"
+        ]
+      },
+      {
+        "rev": "base"
+      },
+      {
+        "write": [
+          "conflict.txt",
+          "main's important change\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "main change"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent",
+          "${base}"
+        ]
+      },
+      {
+        "write": [
+          "conflict.txt",
+          "agent's different change\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "agent change"
+        ]
+      },
+      {
+        "rev": "h"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "${h}",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "conflict.txt"
+    ],
+    "history_files": [
+      "conflict.txt"
+    ],
+    "start_tier_files": [
+      "conflict.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": false,
+          "resolvedTier": null,
+          "error": "MERGE_CONFLICT (tier2 blocked): conflict.txt",
+          "hasCommitHash": true
+        }
+      ],
+      "files": {
+        "conflict.txt": "main's important change\n"
+      },
+      "history": {
+        "conflict.txt": [
+          {
+            "tier": 2,
+            "success": false
+          }
+        ]
+      },
+      "startTiers": {
+        "conflict.txt": 1
+      },
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "tier2_resolved_empty_canonical",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "f.txt",
+          "a\nb\nc\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "base"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent"
+        ]
+      },
+      {
+        "write": [
+          "f.txt",
+          "a\nB2\nc\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "agent modifies b"
+        ]
+      },
+      {
+        "rev": "h"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      },
+      {
+        "write": [
+          "f.txt",
+          "a\nc\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "main deletes b"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "${h}",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "f.txt"
+    ],
+    "history_files": [
+      "f.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": true,
+          "resolvedTier": 2,
+          "error": null,
+          "hasCommitHash": true
+        }
+      ],
+      "files": {
+        "f.txt": "a\nB2\nc\n"
+      },
+      "history": {
+        "f.txt": [
+          {
+            "tier": 2,
+            "success": true
+          }
+        ]
+      },
+      "startTiers": {},
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "mixed_conflicts_blocked_twice",
+    "target": "main",
+    "steps": [
+      {
+        "write": [
+          "f1.txt",
+          "a\nb\nc\n"
+        ]
+      },
+      {
+        "write": [
+          "f2.txt",
+          "a\nb\nc\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "base"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent"
+        ]
+      },
+      {
+        "write": [
+          "f1.txt",
+          "a\nB2\nc\n"
+        ]
+      },
+      {
+        "write": [
+          "f2.txt",
+          "a\nX2\nc\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "agent"
+        ]
+      },
+      {
+        "rev": "h"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      },
+      {
+        "write": [
+          "f1.txt",
+          "a\nc\n"
+        ]
+      },
+      {
+        "write": [
+          "f2.txt",
+          "a\nb-main\nc\n"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "main"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "t1",
+        "hash": "${h}",
+        "branch": "agent"
+      },
+      {
+        "id": "t2",
+        "hash": "${h}",
+        "branch": "agent"
+      }
+    ],
+    "inspect": [
+      "f1.txt",
+      "f2.txt"
+    ],
+    "history_files": [
+      "f1.txt",
+      "f2.txt"
+    ],
+    "start_tier_files": [
+      "f1.txt",
+      "f2.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "t1",
+          "success": false,
+          "resolvedTier": null,
+          "error": "MERGE_CONFLICT (tier2 blocked): f2.txt",
+          "hasCommitHash": true
+        },
+        {
+          "taskId": "t2",
+          "success": false,
+          "resolvedTier": null,
+          "error": "MERGE_CONFLICT (tier2 blocked): f2.txt",
+          "hasCommitHash": true
+        }
+      ],
+      "files": {
+        "f1.txt": "a\nc\n",
+        "f2.txt": "a\nb-main\nc\n"
+      },
+      "history": {
+        "f1.txt": [
+          {
+            "tier": 2,
+            "success": false
+          },
+          {
+            "tier": 2,
+            "success": false
+          }
+        ],
+        "f2.txt": [
+          {
+            "tier": 2,
+            "success": false
+          },
+          {
+            "tier": 2,
+            "success": false
+          }
+        ]
+      },
+      "startTiers": {
+        "f1.txt": 1,
+        "f2.txt": 1
+      },
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  },
+  {
+    "name": "apply_all_sorts_and_filters",
+    "target": "main",
+    "mode": "all",
+    "steps": [
+      {
+        "write": [
+          "base.txt",
+          "base"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "base"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent-b"
+        ]
+      },
+      {
+        "write": [
+          "b.txt",
+          "b"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "b"
+        ]
+      },
+      {
+        "rev": "hb"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "-b",
+          "agent-a"
+        ]
+      },
+      {
+        "write": [
+          "a.txt",
+          "a"
+        ]
+      },
+      {
+        "git": [
+          "add",
+          "-A"
+        ]
+      },
+      {
+        "git": [
+          "commit",
+          "-q",
+          "-m",
+          "a"
+        ]
+      },
+      {
+        "rev": "ha"
+      },
+      {
+        "git": [
+          "checkout",
+          "-q",
+          "main"
+        ]
+      }
+    ],
+    "applies": [
+      {
+        "id": "b",
+        "hash": "${hb}",
+        "branch": "agent-b"
+      },
+      {
+        "id": "z-no-commit",
+        "hash": null,
+        "branch": "none"
+      },
+      {
+        "id": "a",
+        "hash": "${ha}",
+        "branch": "agent-a"
+      }
+    ],
+    "inspect": [
+      "a.txt",
+      "b.txt"
+    ],
+    "expected": {
+      "results": [
+        {
+          "taskId": "a",
+          "success": true,
+          "resolvedTier": 1,
+          "error": null,
+          "hasCommitHash": true
+        },
+        {
+          "taskId": "b",
+          "success": true,
+          "resolvedTier": 1,
+          "error": null,
+          "hasCommitHash": true
+        }
+      ],
+      "files": {
+        "a.txt": "a",
+        "b.txt": "b"
+      },
+      "history": {},
+      "startTiers": {},
+      "porcelainClean": true,
+      "cherryPickInProgress": false
+    }
+  }
+]

@@ -150,3 +150,30 @@ describe("proseDetector", () => {
     expect(looksLikeProse("")).toBe(false);
   });
 });
+
+describe("CommitSequencer — runtime state does not dirty the tree", () => {
+  test("a recorded conflict does not block the next commit", async () => {
+    const repo = path.resolve(os.tmpdir(), `fsc-dirty-test-${Date.now()}`);
+    fs.mkdirSync(repo, { recursive: true });
+    const g = (...a: string[]) => gitExec(a, repo);
+    g("init"); g("checkout", "-b", "main");
+    g("config", "user.name", "t"); g("config", "user.email", "t@t");
+    fs.writeFileSync(path.join(repo, "c.txt"), "orig\n");
+    g("add", "-A"); g("commit", "-m", "base");
+    const base = g("rev-parse", "HEAD").stdout.trim();
+    fs.writeFileSync(path.join(repo, "c.txt"), "main\n");
+    g("add", "-A"); g("commit", "-m", "main");
+    g("checkout", "-b", "agent", base);
+    fs.writeFileSync(path.join(repo, "c.txt"), "agent\n");
+    g("add", "-A"); g("commit", "-m", "agent");
+    const h = g("rev-parse", "HEAD").stdout.trim();
+    g("checkout", "main");
+
+    const seq = new CommitSequencer(repo, "main");
+    const first = await seq.apply(makeExecResult("t1", h, "agent"));
+    expect(first.error).toContain("MERGE_CONFLICT");
+    const second = await seq.apply(makeExecResult("t2", h, "agent"));
+    expect(second.error).not.toContain("working tree is dirty");
+    fs.rmSync(repo, { recursive: true, force: true });
+  });
+});

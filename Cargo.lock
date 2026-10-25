@@ -92,6 +92,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fsc-merge"
+version = "0.1.0"
+dependencies = [
+ "fsc-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "fsc-scope"
 version = "0.1.0"
 dependencies = [

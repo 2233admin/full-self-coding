@@ -1,0 +1,16 @@
+[package]
+name = "fsc-merge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fsc-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
