@@ -49,6 +49,7 @@ export class LocalExecution implements ExecutionStrategy {
     // 4. Spawn agent process
     let timedOut = false;
     let spawnError: string | null = null;
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
     let exitCode: number | null = null;
     let stdoutChunks: string[] = [];
     let stderrChunks: string[] = [];
@@ -73,7 +74,7 @@ export class LocalExecution implements ExecutionStrategy {
 
       // Race process completion against timeout
       const timeoutPromise = new Promise<void>(resolve => {
-        setTimeout(() => {
+        timeoutTimer = setTimeout(() => {
           timedOut = true;
           try { proc.kill(); } catch {}
           resolve();
@@ -104,6 +105,9 @@ export class LocalExecution implements ExecutionStrategy {
         stderrChunks.push(spawnError!);
       }
     } finally {
+      // An uncleared timer keeps the whole process alive until it fires: a finished run used to
+      // hang for the full agent timeout (15 min) before the CLI could exit.
+      clearTimeout(timeoutTimer);
       this.running.delete(unit.id);
     }
 
