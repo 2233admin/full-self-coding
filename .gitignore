@@ -191,3 +191,7 @@ providers.json
 
 # oh-my-codex runtime state (not source)
 .omx/
+
+# Rust
+/target/
+Cargo.lock.bak
