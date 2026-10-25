@@ -82,6 +82,12 @@ export class ABExperiment {
     return assignGroup(taskId, this.splitRatio);
   }
 
+  /** Attach the post-merge test verdict to an already-recorded task. */
+  markPostMergeTest(taskId: string, pass: boolean): void {
+    const m = this.metrics.find(x => x.taskId === taskId);
+    if (m) m.postMergeTestPass = pass;
+  }
+
   record(metrics: ExperimentMetrics): void {
     this.metrics.push(metrics);
   }
