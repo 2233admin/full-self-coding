@@ -112,8 +112,14 @@ export async function runFullAnalysis(): Promise<void> {
     console.log('');
     for (const t of report.tasks) {
       const merged = report.mergeResults.find((m) => m.taskId === t.taskId);
-      const mergeNote = merged ? (merged.success ? ` (merged${merged.resolvedTier ? `, tier ${merged.resolvedTier}` : ''})` : ` (NOT merged: ${merged.error})`) : '';
+      const retried = report.retries?.[t.taskId];
+      const mergeNote = merged ? (merged.success ? ` (merged${retried ? ` after ${retried} retr${retried === 1 ? 'y' : 'ies'}` : ''}${merged.resolvedTier ? `, tier ${merged.resolvedTier}` : ''})` : ` (NOT merged: ${merged.error})`) : '';
       console.log(`  ${t.status === 'completed' && merged?.success ? 'ok  ' : 'FAIL'} ${t.taskId}${mergeNote}${t.error ? ` - ${t.error}` : ''}`);
+    }
+    for (const [id, list] of Object.entries(report.retryOverlaps ?? {})) {
+      for (const o of list) {
+        console.log(`  WARNING ${id} merged after a retry and changed files that ${o.task} also changed (${o.files.join(', ')}). Check that it kept ${o.task}'s change.`);
+      }
     }
     const merged = report.mergeResults.filter((m) => m.success && m.resolvedTier).length;
     console.log(`

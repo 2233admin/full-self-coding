@@ -157,3 +157,33 @@ describe("LocalExecution", () => {
     expect(result.commitHash).toBeNull();
   });
 });
+
+describe("LocalExecution timers", () => {
+  test("a finished run leaves no pending timeout timer behind", () => {
+    // run-once.ts executes a 1 s agent with a 10-minute timeout, then returns. If the timeout
+    // timer is not cleared the process stays alive for the full 10 minutes.
+    const repo = path.resolve(os.tmpdir(), `fsc-timer-${Date.now()}`);
+    fs.mkdirSync(repo, { recursive: true });
+    const g = (...a: string[]) => gitExec(a, repo);
+    g("init"); g("checkout", "-b", "main"); g("config", "user.name", "t"); g("config", "user.email", "t@t");
+    fs.writeFileSync(path.join(repo, "a.txt"), "a");
+    g("add", "-A"); g("commit", "-m", "init");
+
+    const started = Date.now();
+    const proc = Bun.spawnSync({
+      cmd: ["bun", path.resolve(import.meta.dir, "fixtures", "run-once.ts"), repo],
+      timeout: 60_000,
+    });
+    const elapsed = Date.now() - started;
+
+    expect(new TextDecoder().decode(proc.stdout)).toContain("success");
+    expect(elapsed).toBeLessThan(30_000); // about 600 s without clearTimeout
+
+    new WorktreeManager().cleanup(repo);
+    fs.rmSync(repo, { recursive: true, force: true });
+    const parent = path.dirname(repo);
+    for (const e of fs.readdirSync(parent)) {
+      if (e.startsWith(`${path.basename(repo)}-fsc-`)) fs.rmSync(path.join(parent, e), { recursive: true, force: true });
+    }
+  }, 90_000);
+});
